@@ -1,0 +1,57 @@
+@import "tw-animate-css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 100%;
+    --card-border: 0 0% 12%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 350 85% 42%;
+    --primary-foreground: 0 0% 100%;
+    --primary-border: 350 85% 35%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-border: 0 0% 18%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-border: 0 84% 50%;
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
+    --ring: 350 85% 42%;
+    --button-outline: 0 0% 20%;
+    --badge-outline: 0 0% 20%;
+    --radius: 2px;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: Inter, Helvetica, Arial, sans-serif;
+  }
+}
+
+@layer utilities {
+  .hover-elevate {
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .hover-elevate:hover {
+    transform: translateY(-1px);
+  }
+  .active-elevate-2:active {
+    transform: translateY(1px);
+  }
+}
