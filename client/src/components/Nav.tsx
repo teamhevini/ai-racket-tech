@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'wouter';
+import HeviniMark from './HeviniMark';
 
 export default function Nav() {
   const [location] = useLocation();
@@ -6,9 +7,12 @@ export default function Nav() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 h-16 bg-[#0A0A0A] border-b border-[#1a1a1a]">
       <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between">
-        <Link href="/" className="flex flex-col leading-none gap-0.5 no-underline">
-          <span className="text-2xl font-black tracking-tighter text-white leading-none">10IS</span>
-          <span className="text-[9px] text-net-grey tracking-widest uppercase leading-none">Powered by Hevini Sporting</span>
+        <Link href="/" className="flex items-center gap-3 no-underline text-white">
+          <HeviniMark size={34} className="text-white flex-shrink-0" />
+          <div className="flex flex-col leading-none gap-0.5">
+            <span className="text-xl font-black tracking-tighter text-white leading-none">10IS</span>
+            <span className="text-[9px] text-net-grey tracking-widest uppercase leading-none">Powered by Hevini Sporting</span>
+          </div>
         </Link>
 
         <div className="flex items-center gap-6">
