@@ -236,6 +236,7 @@ Provide the best string recommendation for this player.`;
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no');
       res.flushHeaders();
+      res.socket?.setNoDelay(true);
 
       const stream = await openai.chat.completions.create({
         model: 'gpt-4o',
@@ -263,8 +264,8 @@ Provide the best string recommendation for this player.`;
       res.end();
     } catch (err) {
       console.error(err);
-      res.write('data: [DONE]\n\n');
-      res.end();
-    }
-  });
+      const msg = err instanceof Error ? err.message : String(err);
+      try { res.write('data: ' + JSON.stringify({ content: 'Error: ' + msg }) + '\n\n'); } catch (_) {}
+      try { res.write('data: [DONE]\n\n'); res.end(); } catch (_) {}
+    });
 }
