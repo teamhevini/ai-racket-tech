@@ -13,10 +13,10 @@ export default function ChatWidget() {
   const [streaming, setStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [isPro, setIsPro] = useState(false);
+  const [isPro, setIsPro] = useState(() => localStorage.getItem("pro_user") === "true");
 
   useEffect(() => {
-    setIsPro(localStorage.getItem('pro_user') === 'true');
+    if (open) setIsPro(localStorage.getItem('pro_user') === 'true');
   }, [open]);
 
   useEffect(() => {
@@ -56,6 +56,8 @@ export default function ChatWidget() {
         body: JSON.stringify({ role: 'user', content: userMsg }),
       });
 
+      if (!res.ok) throw new Error(`Stream request failed: ${res.status}`);
+
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buf = '';
@@ -86,6 +88,12 @@ export default function ChatWidget() {
           } catch {}
         }
       }
+    } catch {
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last?.role === 'assistant' && !last.content) return prev.slice(0, -1);
+        return prev;
+      });
     } finally {
       setStreaming(false);
     }
