@@ -267,5 +267,6 @@ Provide the best string recommendation for this player.`;
       const msg = err instanceof Error ? err.message : String(err);
       try { res.write('data: ' + JSON.stringify({ content: 'Error: ' + msg }) + '\n\n'); } catch (_) {}
       try { res.write('data: [DONE]\n\n'); res.end(); } catch (_) {}
-    });
+    }
+  });
 }
