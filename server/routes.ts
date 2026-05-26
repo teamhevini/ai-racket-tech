@@ -1,11 +1,35 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import OpenAI from "openai";
+import Stripe from "stripe";
 import { onboardingInputsSchema, recommendationOutputSchema, type OnboardingInputs } from "@shared/schema";
 import { registerChatRoutes } from "./replit_integrations/chat/routes";
+
+const ADMIN_EMAIL = "contact@hevini.com";
+const APP_URL = process.env.APP_URL || "http://localhost:5000";
+
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+      apiVersion: "2025-04-30.basil",
+    });
+  }
+  return _stripe;
+}
+
+function getCookieValue(req: Request, name: string): string | undefined {
+  const cookies = req.headers.cookie || "";
+  const match = cookies.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : undefined;
+}
+
+function getUserEmail(req: Request): string | null {
+  return getCookieValue(req, "user_email") || null;
+}
 
 // Initialize OpenAI lazily to avoid startup errors if env vars aren't set yet
 let _openai: OpenAI | null = null;
@@ -374,13 +398,156 @@ export async function registerRoutes(
     }
   });
 
+  // --- User Tier ---
+
+  app.get("/api/user/tier", async (req, res) => {
+    const email = getUserEmail(req);
+    if (!email) return res.json({ tier: "free", isAdmin: false, email: null });
+    if (email === ADMIN_EMAIL) return res.json({ tier: "club", isAdmin: true, email });
+    const user = await storage.getUserByEmail(email);
+    if (!user) return res.json({ tier: "free", isAdmin: false, email });
+    res.json({ tier: user.tier, isAdmin: user.isAdmin, email });
+  });
+
+  // --- Stripe Checkout ---
+
+  app.post("/api/checkout/pro", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ message: "Email required" });
+      const session = await getStripe().checkout.sessions.create({
+        payment_method_types: ["card"],
+        mode: "payment",
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: "usd",
+            product_data: { name: "10IS Pro" },
+            unit_amount: 499,
+          },
+          quantity: 1,
+        }],
+        success_url: `${APP_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}&tier=pro`,
+        cancel_url: `${APP_URL}/pricing`,
+        metadata: { email, tier: "pro" },
+      });
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Checkout pro error:", error);
+      res.status(500).json({ message: "Failed to create checkout session" });
+    }
+  });
+
+  app.post("/api/checkout/club", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ message: "Email required" });
+      const session = await getStripe().checkout.sessions.create({
+        payment_method_types: ["card"],
+        mode: "subscription",
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: "usd",
+            product_data: { name: "10IS Club" },
+            unit_amount: 199,
+            recurring: { interval: "month" },
+          },
+          quantity: 1,
+        }],
+        success_url: `${APP_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}&tier=club`,
+        cancel_url: `${APP_URL}/pricing`,
+        metadata: { email, tier: "club" },
+      });
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Checkout club error:", error);
+      res.status(500).json({ message: "Failed to create checkout session" });
+    }
+  });
+
+  app.post("/api/checkout/verify", async (req, res) => {
+    try {
+      const { session_id } = req.body;
+      if (!session_id) return res.status(400).json({ message: "Session ID required" });
+      const session = await getStripe().checkout.sessions.retrieve(session_id);
+      const email = session.customer_email || (session.metadata?.email ?? null);
+      const tier = (session.metadata?.tier ?? null) as "pro" | "club" | null;
+      if (email && tier && session.payment_status !== "unpaid") {
+        await storage.upsertUser(email, {
+          tier,
+          stripeCustomerId: typeof session.customer === "string" ? session.customer : undefined,
+          stripeSubscriptionId: typeof session.subscription === "string" ? session.subscription : undefined,
+        });
+        res.setHeader(
+          "Set-Cookie",
+          `user_email=${encodeURIComponent(email)}; Path=/; Max-Age=${365 * 24 * 60 * 60}; SameSite=Lax`
+        );
+        return res.json({ tier, email, success: true });
+      }
+      res.status(400).json({ message: "Payment not completed" });
+    } catch (error) {
+      console.error("Checkout verify error:", error);
+      res.status(500).json({ message: "Failed to verify session" });
+    }
+  });
+
+  // --- Stripe Webhook ---
+
+  app.post("/api/webhooks/stripe", async (req, res) => {
+    const sig = req.headers["stripe-signature"] as string;
+    const rawBody = (req as any).rawBody as Buffer;
+    const secret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!secret) return res.status(500).json({ message: "Webhook secret not configured" });
+
+    let event: Stripe.Event;
+    try {
+      event = getStripe().webhooks.constructEvent(rawBody, sig, secret);
+    } catch (err) {
+      console.error("Webhook signature error:", err);
+      return res.status(400).json({ message: "Webhook signature verification failed" });
+    }
+
+    try {
+      if (event.type === "checkout.session.completed") {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const email = session.customer_email || (session.metadata?.email ?? null);
+        const tier = (session.metadata?.tier ?? null) as "pro" | "club" | null;
+        if (email && tier) {
+          await storage.upsertUser(email, {
+            tier,
+            stripeCustomerId: typeof session.customer === "string" ? session.customer : undefined,
+            stripeSubscriptionId: typeof session.subscription === "string" ? session.subscription : undefined,
+          });
+        }
+      } else if (event.type === "customer.subscription.deleted") {
+        const sub = event.data.object as Stripe.Subscription;
+        const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+        // Find user by stripe customer ID and downgrade
+        const allUsers = await storage.getAllUsers();
+        const user = allUsers.find((u) => u.stripeCustomerId === customerId);
+        if (user) await storage.setUserTier(user.email, "free");
+      }
+      res.json({ received: true });
+    } catch (error) {
+      console.error("Webhook processing error:", error);
+      res.status(500).json({ message: "Webhook processing failed" });
+    }
+  });
+
   // --- Seed Data ---
   await seedDatabase();
+  await seedAdminUser();
 
   // --- Chat Routes ---
   registerChatRoutes(app);
 
   return httpServer;
+}
+
+async function seedAdminUser() {
+  await storage.upsertUser(ADMIN_EMAIL, { isAdmin: true, tier: "club" });
+  console.log(`[seed] Admin user ensured: ${ADMIN_EMAIL}`);
 }
 
 async function seedDatabase() {
