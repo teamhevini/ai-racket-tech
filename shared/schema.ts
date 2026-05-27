@@ -114,7 +114,7 @@ export const stringSetupSchema = z.object({
   stringFamily: z.string(),
   exampleStrings: z.array(z.string()),
   gauge: z.string(),
-  tension: z.string(),
+  tension: z.union([z.string(), z.number()]).transform((val) => String(val)),
 });
 
 export const recommendationOutputSchema = z.object({
