@@ -19,9 +19,8 @@ await esbuild.build({
   outfile: path.resolve(root, "dist/index.cjs"),
   packages: "external",
   tsconfig: path.resolve(root, "tsconfig.json"),
-  define: {
-    "import.meta.dirname": "__dirname",
-    "import.meta.url": `"file://" + __filename`,
+  alias: {
+    "@shared": path.resolve(root, "shared"),
   },
 });
 
