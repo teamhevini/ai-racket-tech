@@ -142,6 +142,11 @@ export default function RecommendationPage() {
               RATE THIS SETUP
             </Button>
           </Link>
+          <Link href="/stringers" className="flex-1">
+            <Button variant="outline" className="w-full rounded-[2px] border-[#333] text-net-grey hover:border-court-white hover:text-court-white uppercase text-xs font-bold" style={{ letterSpacing: "0.1em" }}>
+              FIND A STRINGER
+            </Button>
+          </Link>
           <Link href="/onboarding" className="flex-1">
             <Button className="w-full bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] font-bold uppercase border-0 text-xs" style={{ letterSpacing: "0.1em" }}>
               NEW SETUP
