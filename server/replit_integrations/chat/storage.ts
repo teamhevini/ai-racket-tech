@@ -1,31 +1,60 @@
-import type { Express, Request, Response } from "express";
-import { openai } from "./client";
-
-export function registerImageRoutes(app: Express): void {
-  app.post("/api/generate-image", async (req: Request, res: Response) => {
-    try {
-      const { prompt, size = "1024x1024" } = req.body;
-
-      if (!prompt) {
-        return res.status(400).json({ error: "Prompt is required" });
-      }
-
-      const response = await openai.images.generate({
-        model: "gpt-image-1",
-        prompt,
-        n: 1,
-        size: size as "1024x1024" | "512x512" | "256x256",
-      });
-
-      const imageData = response.data[0];
-      res.json({
-        url: imageData.url,
-        b64_json: imageData.b64_json,
-      });
-    } catch (error) {
-      console.error("Error generating image:", error);
-      res.status(500).json({ error: "Failed to generate image" });
-    }
-  });
+interface Conversation {
+  id: number;
+  title: string;
+  createdAt: string;
 }
 
+interface Message {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+let nextConvId = 1;
+let nextMsgId = 1;
+const conversations = new Map<number, Conversation>();
+const messages = new Map<number, Message[]>();
+
+export const chatStorage = {
+  async getAllConversations(): Promise<Conversation[]> {
+    return Array.from(conversations.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  },
+
+  async getConversation(id: number): Promise<Conversation | null> {
+    return conversations.get(id) ?? null;
+  },
+
+  async createConversation(title: string): Promise<Conversation> {
+    const conv: Conversation = { id: nextConvId++, title, createdAt: new Date().toISOString() };
+    conversations.set(conv.id, conv);
+    messages.set(conv.id, []);
+    return conv;
+  },
+
+  async deleteConversation(id: number): Promise<void> {
+    conversations.delete(id);
+    messages.delete(id);
+  },
+
+  async getMessagesByConversation(conversationId: number): Promise<Message[]> {
+    return messages.get(conversationId) ?? [];
+  },
+
+  async createMessage(conversationId: number, role: string, content: string): Promise<Message> {
+    const msg: Message = {
+      id: nextMsgId++,
+      conversationId,
+      role,
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    const list = messages.get(conversationId) ?? [];
+    list.push(msg);
+    messages.set(conversationId, list);
+    return msg;
+  },
+};
