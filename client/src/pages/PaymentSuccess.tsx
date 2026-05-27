@@ -22,7 +22,7 @@ export default function PaymentSuccess() {
     fetch("/api/checkout/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId }),
+      body: JSON.stringify({ session_id: sessionId }),
       credentials: "include",
     })
       .then((r) => {
