@@ -22,6 +22,24 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
+// Set permissive CSP so Railway's edge proxy doesn't block React's runtime,
+// dynamic imports, or Stripe's checkout redirect.
+app.use((_req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: blob:",
+      "connect-src 'self' https://api.stripe.com https://overpass-api.de https://nominatim.openstreetmap.org",
+      "frame-src https://js.stripe.com https://hooks.stripe.com",
+    ].join("; ")
+  );
+  next();
+});
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
