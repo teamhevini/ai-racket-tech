@@ -1,3 +1,4 @@
+# v2
 [build]
 builder = "nixpacks"
 buildCommand = "npm install --include=dev && npm run build"
