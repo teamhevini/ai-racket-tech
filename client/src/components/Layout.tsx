@@ -1,12 +1,15 @@
 import { Link, useLocation } from "wouter";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Zap } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChatBot } from "@/components/ChatBot";
+import { useUser } from "@/contexts/UserContext";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isPro, isAdmin, loading } = useUser();
+  const showUpgrade = !loading && !isPro && !isAdmin;
 
   const navItems = [
     { label: "RACKETS", path: "/rackets" },
@@ -57,6 +60,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+            {showUpgrade && (
+              <Link href="/pricing">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-9 px-4 rounded-[2px] text-xs font-bold uppercase border-hevini-red text-hevini-red hover:bg-hevini-red hover:text-white transition-colors"
+                  style={{ letterSpacing: "0.1em" }}
+                >
+                  <Zap className="w-3 h-3 mr-1.5" />
+                  UPGRADE
+                </Button>
+              </Link>
+            )}
             <Link href="/onboarding">
               <Button
                 size="sm"
@@ -90,6 +106,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {item.label}
               </Link>
             ))}
+            {showUpgrade && (
+              <Link href="/pricing" onClick={() => setMobileMenuOpen(false)}>
+                <Button
+                  variant="outline"
+                  className="w-full mt-2 rounded-[2px] border-hevini-red text-hevini-red hover:bg-hevini-red hover:text-white font-bold uppercase"
+                  style={{ letterSpacing: "0.1em" }}
+                >
+                  <Zap className="w-4 h-4 mr-2" />
+                  UPGRADE
+                </Button>
+              </Link>
+            )}
             <Link href="/onboarding" onClick={() => setMobileMenuOpen(false)}>
               <Button
                 className="w-full mt-2 bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] font-bold uppercase border-0"
