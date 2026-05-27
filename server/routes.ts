@@ -226,20 +226,21 @@ export async function registerRoutes(
       let recommendation;
       try {
         recommendation = await callOpenAI();
-      } catch (firstErr) {
-        console.warn("First OpenAI attempt failed, retrying:", firstErr);
+      } catch (firstErr: any) {
+        console.warn("[recommend] OpenAI attempt 1 failed:", firstErr?.message ?? firstErr);
         try {
           recommendation = await callOpenAI();
-        } catch (secondErr) {
-          console.error("Both OpenAI attempts failed, using safe fallback:", secondErr);
+        } catch (secondErr: any) {
+          console.error("[recommend] OpenAI attempt 2 failed, using safe fallback:", secondErr?.message ?? secondErr);
           recommendation = safeRecommendation;
         }
       }
 
       // 5. Save Run
+      console.log("[recommend] Saving run to DB, confidence:", confidence);
       const run = await storage.createRecommendationRun({
         racketId: input.racketId,
-        sessionId: "temp-session", // TODO: Session handling
+        sessionId: "temp-session",
         inputsJson: input,
         outputJson: recommendation,
         confidence,
@@ -251,12 +252,15 @@ export async function registerRoutes(
         confidence
       });
 
-    } catch (error) {
-      console.error("Recommendation error:", error);
+    } catch (error: any) {
+      const msg = error?.message ?? String(error);
+      const code = error?.code;
+      console.error("[recommend] Unhandled error — message:", msg, "| code:", code);
+      console.error("[recommend] Stack:", error?.stack);
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: "Invalid input", details: error.errors });
       } else {
-        res.status(500).json({ message: "Failed to generate recommendation" });
+        res.status(500).json({ message: "Failed to generate recommendation", detail: msg });
       }
     }
   });
@@ -537,7 +541,11 @@ export async function registerRoutes(
 
   // --- Seed Data ---
   await seedDatabase();
-  await seedAdminUser();
+  try {
+    await seedAdminUser();
+  } catch (err: any) {
+    console.error("[seed] seedAdminUser failed (users table may not exist yet — run db:push):", err?.message ?? err);
+  }
 
   // --- Chat Routes ---
   registerChatRoutes(app);
