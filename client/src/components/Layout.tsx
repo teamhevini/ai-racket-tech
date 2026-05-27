@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChatBot } from "@/components/ChatBot";
 import { useUser } from "@/contexts/UserContext";
+import signatureLogo from "@/assets/Hevini_08_Signature.png";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -24,7 +25,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
             <img
-              src="/logo-signature.png"
+              src={signatureLogo}
               alt="10IS — Powered by Hevini Sporting"
               className="h-10 w-10 shrink-0 object-contain"
             />
@@ -134,21 +135,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <ChatBot />
 
-      <footer className="bg-chalk text-court-black py-12 mt-12">
+      <footer className="bg-court-black border-t border-[#1A1A1A] text-court-white py-12 mt-12">
         <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center gap-3 mb-3">
-            <img src="/logo-signature.png" alt="" className="h-9 w-9 object-contain" />
+            <img src={signatureLogo} alt="" className="h-9 w-9 object-contain" />
             <span
-              className="font-display font-black text-lg text-court-black"
+              className="font-display font-black text-lg text-court-white"
               style={{ letterSpacing: "0.12em" }}
             >
               10IS
             </span>
           </div>
-          <p className="text-xs uppercase text-[#444]" style={{ letterSpacing: "0.15em" }}>
+          <p className="text-xs uppercase text-net-grey" style={{ letterSpacing: "0.15em" }}>
             Powered by Hevini Sporting
           </p>
-          <p className="text-xs text-[#555] mt-6">
+          <p className="text-xs text-net-grey mt-6">
             &copy; {new Date().getFullYear()} Hevini Sporting. All rights reserved.
           </p>
         </div>
