@@ -1,5 +1,6 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
+import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
@@ -28,7 +29,21 @@ function getCookieValue(req: Request, name: string): string | undefined {
 }
 
 function getUserEmail(req: Request): string | null {
+  if (req.session?.email) return req.session.email;
   return getCookieValue(req, "user_email") || null;
+}
+
+async function requireAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const email = getUserEmail(req);
+  if (!email) { res.status(401).json({ message: "Unauthorized" }); return; }
+  if (email === ADMIN_EMAIL) { next(); return; }
+  const user = await storage.getUserByEmail(email);
+  if (!user?.isAdmin) { res.status(403).json({ message: "Forbidden" }); return; }
+  next();
+}
+
+function buildUserResponse(user: { tier: string; isAdmin: boolean; email: string }) {
+  return { tier: user.tier, isAdmin: user.isAdmin, email: user.email };
 }
 
 // Initialize OpenAI lazily to avoid startup errors if env vars aren't set yet
@@ -402,6 +417,114 @@ export async function registerRoutes(
     }
   });
 
+  // --- Auth Routes ---
+
+  app.post("/api/auth/signup", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      if (!email || !password) return res.status(400).json({ message: "Email and password required" });
+      if (typeof password !== "string" || password.length < 8)
+        return res.status(400).json({ message: "Password must be at least 8 characters" });
+      const existing = await storage.getUserByEmail(email.toLowerCase());
+      if (existing) return res.status(409).json({ message: "An account with this email already exists" });
+      const passwordHash = await bcrypt.hash(password, 12);
+      const user = await storage.createUser(email.toLowerCase(), passwordHash);
+      req.session.email = user.email;
+      res.json(buildUserResponse({ tier: user.tier, isAdmin: user.isAdmin, email: user.email }));
+    } catch (error) {
+      console.error("[auth/signup]", error);
+      res.status(500).json({ message: "Signup failed" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      if (!email || !password) return res.status(400).json({ message: "Email and password required" });
+      const normalizedEmail = email.toLowerCase();
+      if (normalizedEmail === ADMIN_EMAIL) {
+        // Admin login: check password if hash exists, otherwise allow if ADMIN_PASSWORD matches
+        const user = await storage.getUserByEmail(normalizedEmail);
+        if (user?.passwordHash) {
+          const valid = await bcrypt.compare(password, user.passwordHash);
+          if (!valid) return res.status(401).json({ message: "Invalid email or password" });
+        } else if (password !== process.env.ADMIN_PASSWORD) {
+          return res.status(401).json({ message: "Invalid email or password" });
+        }
+        req.session.email = normalizedEmail;
+        return res.json({ tier: "club", isAdmin: true, email: normalizedEmail });
+      }
+      const user = await storage.getUserByEmail(normalizedEmail);
+      if (!user || !user.passwordHash) return res.status(401).json({ message: "Invalid email or password" });
+      const valid = await bcrypt.compare(password, user.passwordHash);
+      if (!valid) return res.status(401).json({ message: "Invalid email or password" });
+      req.session.email = user.email;
+      await storage.upsertUser(user.email, { updatedAt: new Date() });
+      res.json(buildUserResponse({ tier: user.tier, isAdmin: user.isAdmin, email: user.email }));
+    } catch (error) {
+      console.error("[auth/login]", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy(() => {
+      res.clearCookie("user_email");
+      res.clearCookie("connect.sid");
+      res.json({ success: true });
+    });
+  });
+
+  app.get("/api/auth/me", async (req, res) => {
+    const email = getUserEmail(req);
+    if (!email) return res.json({ tier: "free", isAdmin: false, email: null });
+    if (email === ADMIN_EMAIL) return res.json({ tier: "club", isAdmin: true, email });
+    const user = await storage.getUserByEmail(email);
+    if (!user) return res.json({ tier: "free", isAdmin: false, email });
+    res.json(buildUserResponse({ tier: user.tier, isAdmin: user.isAdmin, email: user.email }));
+  });
+
+  // --- Admin Routes ---
+
+  app.get("/api/admin/users", requireAdmin, async (_req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      res.json(allUsers.map(u => ({
+        id: u.id,
+        email: u.email,
+        tier: u.tier,
+        isAdmin: u.isAdmin,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+      })));
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/tier", requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { tier } = req.body;
+      if (!["free", "pro", "club"].includes(tier)) return res.status(400).json({ message: "Invalid tier" });
+      await storage.setUserTierById(id, tier);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update tier" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/admin", requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { isAdmin } = req.body;
+      await storage.setUserAdmin(id, Boolean(isAdmin));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update admin status" });
+    }
+  });
+
   // --- User Tier ---
 
   app.get("/api/user/tier", async (req, res) => {
@@ -483,6 +606,7 @@ export async function registerRoutes(
           stripeCustomerId: typeof session.customer === "string" ? session.customer : undefined,
           stripeSubscriptionId: typeof session.subscription === "string" ? session.subscription : undefined,
         });
+        req.session.email = email;
         res.setHeader(
           "Set-Cookie",
           `user_email=${encodeURIComponent(email)}; Path=/; Max-Age=${365 * 24 * 60 * 60}; SameSite=Lax`

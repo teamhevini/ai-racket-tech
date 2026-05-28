@@ -9,8 +9,14 @@ import signatureLogo from "@/assets/Hevini_08_Signature.png";
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isPro, isAdmin, loading } = useUser();
+  const { isPro, isAdmin, loading, email, refetch } = useUser();
   const showUpgrade = !loading && !isPro && !isAdmin;
+  const isLoggedIn = !loading && !!email;
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    refetch();
+  }
 
   const navItems = [
     { label: "RACKETS", path: "/rackets" },
@@ -74,15 +80,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </Button>
               </Link>
             )}
-            <Link href="/onboarding">
-              <Button
-                size="sm"
-                className="h-9 px-5 bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] text-xs font-bold uppercase border-0"
-                style={{ letterSpacing: "0.1em" }}
-              >
-                GET SETUP
-              </Button>
-            </Link>
+            {isLoggedIn ? (
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] text-net-grey max-w-[140px] truncate">{email}</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleLogout}
+                  className="h-9 px-4 rounded-[2px] text-xs font-bold uppercase border-[#333] text-net-grey hover:border-court-white hover:text-court-white transition-colors"
+                  style={{ letterSpacing: "0.1em" }}
+                >
+                  LOGOUT
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link href="/login">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 px-4 rounded-[2px] text-xs font-bold uppercase border-[#333] text-net-grey hover:border-court-white hover:text-court-white transition-colors"
+                    style={{ letterSpacing: "0.1em" }}
+                  >
+                    LOGIN
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button
+                    size="sm"
+                    className="h-9 px-5 bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] text-xs font-bold uppercase border-0"
+                    style={{ letterSpacing: "0.1em" }}
+                  >
+                    SIGN UP
+                  </Button>
+                </Link>
+              </div>
+            )}
           </nav>
 
           <button
@@ -119,14 +152,39 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </Button>
               </Link>
             )}
-            <Link href="/onboarding" onClick={() => setMobileMenuOpen(false)}>
-              <Button
-                className="w-full mt-2 bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] font-bold uppercase border-0"
-                style={{ letterSpacing: "0.1em" }}
-              >
-                GET SETUP
-              </Button>
-            </Link>
+            {isLoggedIn ? (
+              <>
+                <p className="text-[11px] text-net-grey px-2 mt-2 truncate">{email}</p>
+                <Button
+                  variant="outline"
+                  onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                  className="w-full mt-1 rounded-[2px] border-[#333] text-net-grey hover:border-court-white hover:text-court-white font-bold uppercase"
+                  style={{ letterSpacing: "0.1em" }}
+                >
+                  LOGOUT
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                  <Button
+                    variant="outline"
+                    className="w-full mt-2 rounded-[2px] border-[#333] text-net-grey hover:border-court-white hover:text-court-white font-bold uppercase"
+                    style={{ letterSpacing: "0.1em" }}
+                  >
+                    LOGIN
+                  </Button>
+                </Link>
+                <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
+                  <Button
+                    className="w-full mt-2 bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] font-bold uppercase border-0"
+                    style={{ letterSpacing: "0.1em" }}
+                  >
+                    SIGN UP
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         )}
       </header>

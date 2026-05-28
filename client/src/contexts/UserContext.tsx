@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export type UserTier = "free" | "pro" | "club";
 
@@ -15,6 +15,7 @@ interface UserState {
   canSaveHistory: boolean;
   canShare: boolean;
   canMultiProfile: boolean;
+  refetch: () => void;
 }
 
 const defaultState: UserState = {
@@ -30,15 +31,17 @@ const defaultState: UserState = {
   canSaveHistory: false,
   canShare: false,
   canMultiProfile: false,
+  refetch: () => {},
 };
 
 const UserContext = createContext<UserState>(defaultState);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<UserState>(defaultState);
+  const [state, setState] = useState<Omit<UserState, "refetch">>(defaultState);
 
-  useEffect(() => {
-    fetch("/api/user/tier", { credentials: "include" })
+  const load = useCallback(() => {
+    setState((s) => ({ ...s, loading: true }));
+    fetch("/api/auth/me", { credentials: "include" })
       .then((r) => r.json())
       .then((data: { tier: UserTier; isAdmin: boolean; email: string | null }) => {
         const { tier, isAdmin, email } = data;
@@ -62,7 +65,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       .catch(() => setState({ ...defaultState, loading: false }));
   }, []);
 
-  return <UserContext.Provider value={state}>{children}</UserContext.Provider>;
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const value = useMemo(() => ({ ...state, refetch: load }), [state, load]);
+
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 }
 
 export function useUser() {

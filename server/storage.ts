@@ -31,9 +31,13 @@ export interface IStorage {
 
   // Users
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserById(id: number): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
+  createUser(email: string, passwordHash: string): Promise<User>;
   upsertUser(email: string, data: Partial<Omit<User, "id" | "email" | "createdAt">>): Promise<User>;
   setUserTier(email: string, tier: "free" | "pro" | "club"): Promise<void>;
+  setUserAdmin(id: number, isAdmin: boolean): Promise<void>;
+  setUserTierById(id: number, tier: "free" | "pro" | "club"): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -90,8 +94,26 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserById(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
   async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users);
+    return await db.select().from(users).orderBy(users.createdAt);
+  }
+
+  async createUser(email: string, passwordHash: string): Promise<User> {
+    const [user] = await db.insert(users).values({ email, passwordHash }).returning();
+    return user;
+  }
+
+  async setUserAdmin(id: number, isAdmin: boolean): Promise<void> {
+    await db.update(users).set({ isAdmin, updatedAt: new Date() }).where(eq(users.id, id));
+  }
+
+  async setUserTierById(id: number, tier: "free" | "pro" | "club"): Promise<void> {
+    await db.update(users).set({ tier, updatedAt: new Date() }).where(eq(users.id, id));
   }
 
   async upsertUser(

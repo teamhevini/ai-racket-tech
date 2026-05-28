@@ -14,6 +14,9 @@ import Stringers from "@/pages/Stringers";
 import Rackets from "@/pages/Rackets";
 import Pricing from "@/pages/Pricing";
 import PaymentSuccess from "@/pages/PaymentSuccess";
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
+import Admin from "@/pages/Admin";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -28,6 +31,9 @@ function Router() {
         <Route path="/rackets" component={Rackets} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/payment-success" component={PaymentSuccess} />
+        <Route path="/login" component={Login} />
+        <Route path="/signup" component={Signup} />
+        <Route path="/admin" component={Admin} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

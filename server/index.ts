@@ -1,11 +1,23 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import ConnectPgSimple from "connect-pg-simple";
+import { pool } from "./db";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
+declare module "express-session" {
+  interface SessionData {
+    email?: string;
+  }
+}
+
 const app = express();
 const httpServer = createServer(app);
+
+// Trust Railway's reverse proxy so secure cookies work over HTTPS
+app.set("trust proxy", 1);
 
 declare module "http" {
   interface IncomingMessage {
@@ -22,6 +34,26 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+const PgStore = ConnectPgSimple(session);
+app.use(
+  session({
+    store: new PgStore({
+      pool,
+      createTableIfMissing: true,
+      tableName: "user_sessions",
+    }),
+    secret: process.env.SESSION_SECRET || "dev-secret-change-in-prod",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      sameSite: "lax",
+    },
+  }),
+);
 
 // Set permissive CSP so Railway's edge proxy doesn't block React's runtime,
 // dynamic imports, or Stripe's checkout redirect.
