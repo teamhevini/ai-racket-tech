@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, MapPin, Phone, Globe, Lock, Navigation } from "lucide-react";
+import { Search, MapPin, Phone, Globe, Lock, Navigation, Bookmark } from "lucide-react";
 import { Link } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -133,9 +133,39 @@ export default function Stringers() {
 }
 
 function StringerCard({ stringer }: { stringer: Stringer }) {
+  const { email } = useUser();
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!email) { window.location.href = "/login"; return; }
+    setSaving(true);
+    const res = await fetch("/api/account/stringers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ stringerName: stringer.name, stringerAddress: stringer.address, stringerPlaceId: stringer.place_id }),
+    });
+    setSaving(false);
+    if (res.ok) setSaved(true);
+  }
+
   return (
     <div className="bg-[#111] border border-[#1E1E1E] hover:border-[#333] rounded-[4px] p-4 transition-colors">
-      <p className="text-court-white font-bold text-sm mb-1">{stringer.name}</p>
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <p className="text-court-white font-bold text-sm">{stringer.name}</p>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleSave}
+          disabled={saved || saving}
+          className="h-7 px-2.5 rounded-[2px] border-[#333] text-net-grey hover:border-hevini-red hover:text-hevini-red text-[10px] font-bold uppercase shrink-0"
+          style={{ letterSpacing: "0.08em" }}
+        >
+          <Bookmark className={`w-3 h-3 mr-1 ${saved ? "fill-hevini-red text-hevini-red" : ""}`} />
+          {saved ? "SAVED" : "SAVE"}
+        </Button>
+      </div>
       <div className="space-y-1">
         <div className="flex items-start gap-2 text-xs text-net-grey">
           <MapPin className="w-3 h-3 shrink-0 mt-0.5" />

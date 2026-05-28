@@ -16,6 +16,9 @@ export const users = pgTable("users", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   passwordHash: text("password_hash"),
+  reminderEnabled: boolean("reminder_enabled").default(false).notNull(),
+  reminderFrequencyWeeks: integer("reminder_frequency_weeks").default(4),
+  lastRestrungAt: timestamp("last_restrung_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -46,6 +49,7 @@ export const rackets = pgTable("rackets", {
 // Recommendation Runs table
 export const recommendationRuns = pgTable("recommendation_runs", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
   sessionId: text("session_id"),
   racketId: integer("racket_id").references(() => rackets.id),
   inputsJson: jsonb("inputs_json").notNull(),
@@ -83,6 +87,30 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Saved Rackets table (user's personal garage)
+export const savedRackets = pgTable("saved_rackets", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  nickname: text("nickname").notNull(),
+  brand: text("brand"),
+  model: text("model"),
+  headSize: integer("head_size"),
+  stringPattern: text("string_pattern"),
+  weight: real("weight"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Saved Stringers table (user's favourites)
+export const savedStringers = pgTable("saved_stringers", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  stringerName: text("stringer_name").notNull(),
+  stringerAddress: text("stringer_address"),
+  stringerPlaceId: text("stringer_place_id"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Zod Schemas
 export const insertRacketSchema = createInsertSchema(rackets).omit({ id: true, createdAt: true });
 export const insertRunSchema = createInsertSchema(recommendationRuns).omit({ id: true, createdAt: true });
@@ -92,6 +120,8 @@ export const insertFeedbackSchema = createInsertSchema(feedback).omit({ id: true
 export type Racket = typeof rackets.$inferSelect;
 export type RecommendationRun = typeof recommendationRuns.$inferSelect;
 export type Feedback = typeof feedback.$inferSelect;
+export type SavedRacket = typeof savedRackets.$inferSelect;
+export type SavedStringer = typeof savedStringers.$inferSelect;
 
 export type InsertRacket = z.infer<typeof insertRacketSchema>;
 export type InsertRun = z.infer<typeof insertRunSchema>;

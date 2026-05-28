@@ -23,6 +23,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { label: "STRINGERS", path: "/stringers" },
     { label: "SETUP", path: "/onboarding" },
     { label: "PRICING", path: "/pricing" },
+    ...(isLoggedIn ? [{ label: "ACCOUNT", path: "/account" }] : []),
   ];
 
   return (

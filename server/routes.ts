@@ -253,9 +253,12 @@ export async function registerRoutes(
 
       // 5. Save Run
       console.log("[recommend] Saving run to DB, confidence:", confidence);
+      const runEmail = getUserEmail(req);
+      const runUser = runEmail ? await storage.getUserByEmail(runEmail) : null;
       const run = await storage.createRecommendationRun({
         racketId: input.racketId,
         sessionId: "temp-session",
+        userId: runUser?.id ?? null,
         inputsJson: input,
         outputJson: recommendation,
         confidence,
@@ -662,6 +665,219 @@ export async function registerRoutes(
       console.error("Webhook processing error:", error);
       res.status(500).json({ message: "Webhook processing failed" });
     }
+  });
+
+  // --- Account Routes (require auth) ---
+
+  async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const email = getUserEmail(req);
+    if (!email) { res.status(401).json({ message: "Unauthorized" }); return; }
+    next();
+  }
+
+  async function getAuthUser(req: Request) {
+    const email = getUserEmail(req);
+    if (!email) return null;
+    if (email === ADMIN_EMAIL) {
+      return await storage.getUserByEmail(email) ?? await storage.upsertUser(email, { isAdmin: true, tier: "club" });
+    }
+    return await storage.getUserByEmail(email);
+  }
+
+  // Profile
+  app.get("/api/account/profile", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json({
+        id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName,
+        tier: user.tier, isAdmin: user.isAdmin, createdAt: user.createdAt,
+        reminderEnabled: user.reminderEnabled, reminderFrequencyWeeks: user.reminderFrequencyWeeks,
+        lastRestrungAt: user.lastRestrungAt, stripeSubscriptionId: user.stripeSubscriptionId,
+      });
+    } catch (e) { res.status(500).json({ message: "Failed to load profile" }); }
+  });
+
+  app.patch("/api/account/profile", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const { firstName, lastName, email } = req.body;
+      if (email && email !== user.email) {
+        const existing = await storage.getUserByEmail(email.toLowerCase());
+        if (existing) return res.status(409).json({ message: "Email already in use" });
+      }
+      const updated = await storage.updateUserProfile(user.id, {
+        firstName: firstName?.trim() || undefined,
+        lastName: lastName?.trim() || undefined,
+        email: email?.toLowerCase() || undefined,
+      });
+      if (email && email !== user.email) req.session.email = email.toLowerCase();
+      res.json({ success: true, firstName: updated.firstName, lastName: updated.lastName, email: updated.email });
+    } catch (e) { res.status(500).json({ message: "Failed to update profile" }); }
+  });
+
+  app.post("/api/account/change-password", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) return res.status(400).json({ message: "Both passwords required" });
+      if (newPassword.length < 8) return res.status(400).json({ message: "New password must be at least 8 characters" });
+      if (user.passwordHash) {
+        const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+        if (!valid) return res.status(401).json({ message: "Current password is incorrect" });
+      }
+      const hash = await bcrypt.hash(newPassword, 12);
+      await storage.updateUserPassword(user.id, hash);
+      res.json({ success: true });
+    } catch (e) { res.status(500).json({ message: "Failed to change password" }); }
+  });
+
+  // Reminders
+  app.patch("/api/account/reminders", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const { reminderEnabled, reminderFrequencyWeeks, lastRestrungAt } = req.body;
+      await storage.updateUserReminders(user.id, {
+        reminderEnabled: Boolean(reminderEnabled),
+        reminderFrequencyWeeks: Number(reminderFrequencyWeeks) || 4,
+        lastRestrungAt: lastRestrungAt ? new Date(lastRestrungAt) : null,
+      });
+      res.json({ success: true });
+    } catch (e) { res.status(500).json({ message: "Failed to update reminders" }); }
+  });
+
+  // Saved Rackets
+  app.get("/api/account/rackets", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json(await storage.getSavedRackets(user.id));
+    } catch (e) { res.status(500).json({ message: "Failed to load rackets" }); }
+  });
+
+  app.post("/api/account/rackets", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const FREE_LIMIT = 3;
+      if (user.tier === "free" && !user.isAdmin) {
+        const existing = await storage.getSavedRackets(user.id);
+        if (existing.length >= FREE_LIMIT) return res.status(403).json({ message: "Free plan limited to 3 rackets" });
+      }
+      const { nickname, brand, model, headSize, stringPattern, weight } = req.body;
+      if (!nickname) return res.status(400).json({ message: "Nickname required" });
+      const racket = await storage.createSavedRacket(user.id, { nickname, brand, model, headSize: headSize ? Number(headSize) : null, stringPattern, weight: weight ? Number(weight) : null });
+      res.status(201).json(racket);
+    } catch (e) { res.status(500).json({ message: "Failed to save racket" }); }
+  });
+
+  app.patch("/api/account/rackets/:id", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const { nickname, brand, model, headSize, stringPattern, weight } = req.body;
+      const updated = await storage.updateSavedRacket(Number(req.params.id), user.id, { nickname, brand, model, headSize: headSize ? Number(headSize) : undefined, stringPattern, weight: weight ? Number(weight) : undefined });
+      if (!updated) return res.status(404).json({ message: "Racket not found" });
+      res.json(updated);
+    } catch (e) { res.status(500).json({ message: "Failed to update racket" }); }
+  });
+
+  app.delete("/api/account/rackets/:id", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      await storage.deleteSavedRacket(Number(req.params.id), user.id);
+      res.json({ success: true });
+    } catch (e) { res.status(500).json({ message: "Failed to delete racket" }); }
+  });
+
+  // Recommendations history
+  app.get("/api/account/recommendations", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const runs = await storage.getRecommendationsByUserId(user.id);
+      const withRackets = await Promise.all(runs.map(async (run) => {
+        const racket = run.racketId ? await storage.getRacket(run.racketId) : null;
+        return { ...run, racket };
+      }));
+      res.json(withRackets);
+    } catch (e) { res.status(500).json({ message: "Failed to load recommendations" }); }
+  });
+
+  // Saved Stringers
+  app.get("/api/account/stringers", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json(await storage.getSavedStringers(user.id));
+    } catch (e) { res.status(500).json({ message: "Failed to load stringers" }); }
+  });
+
+  app.post("/api/account/stringers", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const { stringerName, stringerAddress, stringerPlaceId, notes } = req.body;
+      if (!stringerName) return res.status(400).json({ message: "Stringer name required" });
+      const stringer = await storage.createSavedStringer(user.id, { stringerName, stringerAddress, stringerPlaceId, notes });
+      res.status(201).json(stringer);
+    } catch (e) { res.status(500).json({ message: "Failed to save stringer" }); }
+  });
+
+  app.patch("/api/account/stringers/:id", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const updated = await storage.updateSavedStringer(Number(req.params.id), user.id, { notes: req.body.notes });
+      if (!updated) return res.status(404).json({ message: "Stringer not found" });
+      res.json(updated);
+    } catch (e) { res.status(500).json({ message: "Failed to update stringer" }); }
+  });
+
+  app.delete("/api/account/stringers/:id", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      await storage.deleteSavedStringer(Number(req.params.id), user.id);
+      res.json({ success: true });
+    } catch (e) { res.status(500).json({ message: "Failed to remove stringer" }); }
+  });
+
+  // Cancel subscription
+  app.post("/api/account/cancel-subscription", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user?.stripeSubscriptionId) return res.status(400).json({ message: "No active subscription" });
+      const sub = await getStripe().subscriptions.update(user.stripeSubscriptionId, { cancel_at_period_end: true });
+      res.json({ cancelAt: sub.cancel_at ? new Date(sub.cancel_at * 1000).toISOString() : null });
+    } catch (e) { res.status(500).json({ message: "Failed to cancel subscription" }); }
+  });
+
+  // Delete account
+  app.delete("/api/account/delete", requireAuth, async (req, res) => {
+    try {
+      const user = await getAuthUser(req);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const [runs, savedRkts, savedStrs] = await Promise.all([
+        storage.getRecommendationsByUserId(user.id),
+        storage.getSavedRackets(user.id),
+        storage.getSavedStringers(user.id),
+      ]);
+      const exportData = {
+        profile: { email: user.email, firstName: user.firstName, lastName: user.lastName, tier: user.tier, createdAt: user.createdAt },
+        recommendations: runs,
+        savedRackets: savedRkts,
+        savedStringers: savedStrs,
+      };
+      await storage.deleteUser(user.id);
+      req.session.destroy(() => {});
+      res.clearCookie("user_email");
+      res.json({ success: true, exportData });
+    } catch (e) { res.status(500).json({ message: "Failed to delete account" }); }
   });
 
   // --- Seed Data ---
