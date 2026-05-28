@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, X, Send, Loader2, Lock } from "lucide-react";
+import { X, Send, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
 import { useUser } from "@/contexts/UserContext";
+import signatureLogo from "@/assets/Hevini_08_Signature.png";
 
 interface Message {
   role: "user" | "assistant";
@@ -116,20 +117,22 @@ export function ChatBot() {
   return (
     <>
       <motion.button
-        className="fixed bottom-6 right-6 z-50 w-[52px] h-[52px] rounded-[2px] bg-hevini-red hover:bg-hevini-red-dark text-white shadow-2xl shadow-black/40 flex items-center justify-center"
-        whileHover={{ scale: 1.06 }}
-        whileTap={{ scale: 0.95 }}
+        className="fixed bottom-6 right-6 z-50 rounded-full bg-[#0A0A0A] border border-[#2A2A2A] text-white shadow-2xl shadow-black/50 flex items-center gap-2.5 px-4 py-2.5 hover:border-[#444] transition-colors"
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.97 }}
         onClick={() => setOpen((o) => !o)}
         aria-label="Open 10IS Technician chat"
       >
         <AnimatePresence mode="wait">
           {open ? (
-            <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
-              <X className="w-6 h-6" />
+            <motion.span key="x" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.15 }} className="flex items-center gap-2">
+              <X className="w-4 h-4 text-net-grey" />
+              <span className="text-[11px] font-bold uppercase text-net-grey" style={{ letterSpacing: "0.1em" }}>Close</span>
             </motion.span>
           ) : (
-            <motion.span key="chat" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
-              <MessageCircle className="w-6 h-6" />
+            <motion.span key="chat" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.15 }} className="flex items-center gap-2">
+              <img src={signatureLogo} alt="" className="w-5 h-5 object-contain" />
+              <span className="text-[11px] font-bold uppercase text-court-white" style={{ letterSpacing: "0.08em" }}>Chat with 10IS AI</span>
             </motion.span>
           )}
         </AnimatePresence>
@@ -147,7 +150,7 @@ export function ChatBot() {
             style={{ height: "520px" }}
           >
             <div className="px-4 py-3 bg-hevini-red text-white flex items-center gap-3 shrink-0">
-              <img src="/logo-signature.png" alt="" className="w-6 h-6 object-contain" />
+              <img src={signatureLogo} alt="" className="w-6 h-6 object-contain" />
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-[13px] leading-tight uppercase" style={{ letterSpacing: "0.08em" }}>
                   10IS Technician
