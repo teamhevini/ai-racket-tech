@@ -42,8 +42,8 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction): Pr
   next();
 }
 
-function buildUserResponse(user: { tier: string; isAdmin: boolean; email: string }) {
-  return { tier: user.tier, isAdmin: user.isAdmin, email: user.email };
+function buildUserResponse(user: { tier: string; isAdmin: boolean; email: string; firstName?: string | null; lastName?: string | null }) {
+  return { tier: user.tier, isAdmin: user.isAdmin, email: user.email, firstName: user.firstName ?? null, lastName: user.lastName ?? null };
 }
 
 // Initialize OpenAI lazily to avoid startup errors if env vars aren't set yet
@@ -421,14 +421,15 @@ export async function registerRoutes(
 
   app.post("/api/auth/signup", async (req, res) => {
     try {
-      const { email, password } = req.body;
+      const { email, password, firstName, lastName } = req.body;
       if (!email || !password) return res.status(400).json({ message: "Email and password required" });
+      if (!firstName || !lastName) return res.status(400).json({ message: "First and last name required" });
       if (typeof password !== "string" || password.length < 8)
         return res.status(400).json({ message: "Password must be at least 8 characters" });
       const existing = await storage.getUserByEmail(email.toLowerCase());
       if (existing) return res.status(409).json({ message: "An account with this email already exists" });
       const passwordHash = await bcrypt.hash(password, 12);
-      const user = await storage.createUser(email.toLowerCase(), passwordHash);
+      const user = await storage.createUser(email.toLowerCase(), passwordHash, firstName.trim(), lastName.trim());
       req.session.email = user.email;
       res.json(buildUserResponse({ tier: user.tier, isAdmin: user.isAdmin, email: user.email }));
     } catch (error) {
@@ -477,11 +478,11 @@ export async function registerRoutes(
 
   app.get("/api/auth/me", async (req, res) => {
     const email = getUserEmail(req);
-    if (!email) return res.json({ tier: "free", isAdmin: false, email: null });
-    if (email === ADMIN_EMAIL) return res.json({ tier: "club", isAdmin: true, email });
+    if (!email) return res.json({ tier: "free", isAdmin: false, email: null, firstName: null, lastName: null });
+    if (email === ADMIN_EMAIL) return res.json({ tier: "club", isAdmin: true, email, firstName: null, lastName: null });
     const user = await storage.getUserByEmail(email);
-    if (!user) return res.json({ tier: "free", isAdmin: false, email });
-    res.json(buildUserResponse({ tier: user.tier, isAdmin: user.isAdmin, email: user.email }));
+    if (!user) return res.json({ tier: "free", isAdmin: false, email, firstName: null, lastName: null });
+    res.json(buildUserResponse(user));
   });
 
   // --- Admin Routes ---

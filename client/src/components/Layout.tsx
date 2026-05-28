@@ -9,7 +9,7 @@ import signatureLogo from "@/assets/Hevini_08_Signature.png";
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isPro, isAdmin, loading, email, refetch } = useUser();
+  const { isPro, isAdmin, loading, email, firstName, refetch } = useUser();
   const showUpgrade = !loading && !isPro && !isAdmin;
   const isLoggedIn = !loading && !!email;
 
@@ -82,7 +82,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
             {isLoggedIn ? (
               <div className="flex items-center gap-3">
-                <span className="text-[11px] text-net-grey max-w-[140px] truncate">{email}</span>
+                <span className="text-[11px] text-net-grey max-w-[140px] truncate">{firstName ?? email}</span>
                 <Button
                   size="sm"
                   variant="outline"
@@ -154,7 +154,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
             {isLoggedIn ? (
               <>
-                <p className="text-[11px] text-net-grey px-2 mt-2 truncate">{email}</p>
+                <p className="text-[11px] text-net-grey px-2 mt-2 truncate">{firstName ?? email}</p>
                 <Button
                   variant="outline"
                   onClick={() => { handleLogout(); setMobileMenuOpen(false); }}

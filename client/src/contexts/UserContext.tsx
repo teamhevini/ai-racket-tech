@@ -6,6 +6,8 @@ interface UserState {
   tier: UserTier;
   isAdmin: boolean;
   email: string | null;
+  firstName: string | null;
+  lastName: string | null;
   loading: boolean;
   isPro: boolean;
   isClub: boolean;
@@ -22,6 +24,8 @@ const defaultState: UserState = {
   tier: "free",
   isAdmin: false,
   email: null,
+  firstName: null,
+  lastName: null,
   loading: true,
   isPro: false,
   isClub: false,
@@ -43,14 +47,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, loading: true }));
     fetch("/api/auth/me", { credentials: "include" })
       .then((r) => r.json())
-      .then((data: { tier: UserTier; isAdmin: boolean; email: string | null }) => {
-        const { tier, isAdmin, email } = data;
+      .then((data: { tier: UserTier; isAdmin: boolean; email: string | null; firstName: string | null; lastName: string | null }) => {
+        const { tier, isAdmin, email, firstName, lastName } = data;
         const isPro = isAdmin || tier === "pro" || tier === "club";
         const isClub = isAdmin || tier === "club";
         setState({
           tier,
           isAdmin,
           email,
+          firstName: firstName ?? null,
+          lastName: lastName ?? null,
           loading: false,
           isPro,
           isClub,

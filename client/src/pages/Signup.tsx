@@ -10,6 +10,8 @@ import signatureLogo from "@/assets/Hevini_08_Signature.png";
 export default function Signup() {
   const [, navigate] = useLocation();
   const { refetch } = useUser();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -35,7 +37,7 @@ export default function Signup() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, firstName, lastName }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -68,6 +70,45 @@ export default function Signup() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="firstName"
+                className="text-[11px] font-bold uppercase text-net-grey"
+                style={{ letterSpacing: "0.1em" }}
+              >
+                First Name
+              </Label>
+              <Input
+                id="firstName"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+                placeholder="Jane"
+                className="h-11 rounded-[2px] bg-[#111] border border-[#2A2A2A] text-court-white placeholder:text-[#444] focus-visible:ring-1 focus-visible:ring-hevini-red focus-visible:border-hevini-red"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="lastName"
+                className="text-[11px] font-bold uppercase text-net-grey"
+                style={{ letterSpacing: "0.1em" }}
+              >
+                Last Name
+              </Label>
+              <Input
+                id="lastName"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+                placeholder="Smith"
+                className="h-11 rounded-[2px] bg-[#111] border border-[#2A2A2A] text-court-white placeholder:text-[#444] focus-visible:ring-1 focus-visible:ring-hevini-red focus-visible:border-hevini-red"
+              />
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label
               htmlFor="email"

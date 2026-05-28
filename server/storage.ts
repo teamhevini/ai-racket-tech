@@ -33,7 +33,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserById(id: number): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
-  createUser(email: string, passwordHash: string): Promise<User>;
+  createUser(email: string, passwordHash: string, firstName?: string, lastName?: string): Promise<User>;
   upsertUser(email: string, data: Partial<Omit<User, "id" | "email" | "createdAt">>): Promise<User>;
   setUserTier(email: string, tier: "free" | "pro" | "club"): Promise<void>;
   setUserAdmin(id: number, isAdmin: boolean): Promise<void>;
@@ -103,8 +103,8 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(users).orderBy(users.createdAt);
   }
 
-  async createUser(email: string, passwordHash: string): Promise<User> {
-    const [user] = await db.insert(users).values({ email, passwordHash }).returning();
+  async createUser(email: string, passwordHash: string, firstName?: string, lastName?: string): Promise<User> {
+    const [user] = await db.insert(users).values({ email, passwordHash, firstName, lastName }).returning();
     return user;
   }
 
