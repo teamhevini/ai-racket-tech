@@ -8,10 +8,12 @@ interface StringerSearchParams {
 }
 
 export function useStringers(params: StringerSearchParams) {
+  const hasCoords = !!params.lat && !!params.lng;
+  const hasQuery = !!params.query && params.query.length >= 3;
+
   return useQuery({
     queryKey: [api.stringers.search.path, params],
     queryFn: async () => {
-      if (!params.query && (!params.lat || !params.lng)) return [];
       const searchParams = new URLSearchParams();
       if (params.query) searchParams.append("query", params.query);
       if (params.lat) searchParams.append("lat", params.lat);
@@ -21,7 +23,7 @@ export function useStringers(params: StringerSearchParams) {
       if (!res.ok) throw new Error("Failed to search stringers");
       return api.stringers.search.responses[200].parse(await res.json());
     },
-    enabled: !!params.query || (!!params.lat && !!params.lng),
+    enabled: hasQuery || hasCoords,
     staleTime: 1000 * 60 * 15,
   });
 }

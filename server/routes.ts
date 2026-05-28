@@ -311,101 +311,57 @@ export async function registerRoutes(
     }
   });
 
-  // --- Stringers Search (OpenStreetMap Nominatim + Overpass — no API key required) ---
+  // --- Stringers Search (Google Places Text Search) ---
 
   app.get(api.stringers.search.path, async (req, res) => {
     try {
-      let { query, lat, lng } = req.query as { query?: string; lat?: string; lng?: string };
+      const { query, lat, lng } = req.query as { query?: string; lat?: string; lng?: string };
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 
-      const OSM_HEADERS = {
-        "User-Agent": "10isCompanion/1.0 (tennis-string-app)",
-        "Accept": "application/json",
-      };
-
-      async function safeJson(response: Response, label: string) {
-        const ct = response.headers.get("content-type") ?? "";
-        if (!response.ok || !ct.includes("json")) {
-          const body = await response.text();
-          console.error(`[stringers] ${label} returned non-JSON (${response.status}):`, body.slice(0, 200));
-          return null;
-        }
-        return response.json();
-      }
-
-      // If no coords, geocode the text query via Nominatim
-      if ((!lat || !lng) && query) {
-        const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
-        const geoRes = await fetch(geoUrl, { headers: OSM_HEADERS });
-        const geoData = await safeJson(geoRes, "Nominatim geocode");
-        if (!geoData || geoData.length === 0) return res.json([]);
-        lat = geoData[0].lat;
-        lng = geoData[0].lon;
-      }
-
-      if (!lat || !lng) return res.json([]);
-
-      // Overpass query sent as POST to avoid URL-length limits that cause XML error responses
-      const radius = 25000;
-      const overpassQuery = `[out:json][timeout:30];(node["shop"="sports"](around:${radius},${lat},${lng});way["shop"="sports"](around:${radius},${lat},${lng});node["shop"="tennis"](around:${radius},${lat},${lng});way["shop"="tennis"](around:${radius},${lat},${lng});node["sport"="tennis"]["leisure"="sports_centre"](around:${radius},${lat},${lng});way["sport"="tennis"]["leisure"="sports_centre"](around:${radius},${lat},${lng});node["sport"="tennis"]["leisure"="sports_club"](around:${radius},${lat},${lng});way["sport"="tennis"]["leisure"="sports_club"](around:${radius},${lat},${lng});node["amenity"="sporting_goods"](around:${radius},${lat},${lng});node["name"~"tennis|racket|racquet|stringing",i]["shop"](around:${radius},${lat},${lng}););out center 40;`;
-
-      const overpassRes = await fetch("https://overpass-api.de/api/interpreter", {
-        method: "POST",
-        headers: { ...OSM_HEADERS, "Content-Type": "application/x-www-form-urlencoded" },
-        body: `data=${encodeURIComponent(overpassQuery)}`,
-      });
-      const overpassData = await safeJson(overpassRes, "Overpass");
-
-      if (!overpassData || !overpassData.elements || overpassData.elements.length === 0) {
+      if (!apiKey) {
+        console.error("[stringers] GOOGLE_MAPS_API_KEY not set");
         return res.json([]);
       }
 
-      // Deduplicate by name+approx location, then reverse-geocode addresses
-      const seen = new Set<string>();
-      const results: any[] = [];
-
-      for (const el of overpassData.elements) {
-        const elLat = el.lat ?? el.center?.lat;
-        const elLon = el.lon ?? el.center?.lon;
-        const name = el.tags?.name || el.tags?.operator || "Tennis / Sports Venue";
-        const key = `${name}|${Math.round((elLat ?? 0) * 1000)}|${Math.round((elLon ?? 0) * 1000)}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-
-        // Build address from OSM tags if available, otherwise reverse-geocode
-        let address = [
-          el.tags?.["addr:housenumber"],
-          el.tags?.["addr:street"],
-          el.tags?.["addr:city"],
-          el.tags?.["addr:postcode"],
-          el.tags?.["addr:country"],
-        ].filter(Boolean).join(", ");
-
-        if (!address && elLat && elLon) {
-          try {
-            const revUrl = `https://nominatim.openstreetmap.org/reverse?lat=${elLat}&lon=${elLon}&format=json`;
-            const revRes = await fetch(revUrl, { headers: OSM_HEADERS });
-            const revData = await safeJson(revRes, "Nominatim reverse");
-            address = revData?.display_name || `${elLat}, ${elLon}`;
-          } catch {
-            address = `${elLat}, ${elLon}`;
-          }
-        }
-
-        const shopTypes = [];
-        if (el.tags?.shop) shopTypes.push("store");
-        if (el.tags?.sport === "tennis") shopTypes.push("tennis");
-        if (el.tags?.leisure) shopTypes.push(el.tags.leisure);
-
-        results.push({
-          name,
-          address,
-          place_id: `osm-${el.type}-${el.id}`,
-          geometry: elLat && elLon ? { location: { lat: elLat, lng: elLon } } : undefined,
-          types: shopTypes,
-          website: el.tags?.website,
-          phone: el.tags?.phone,
-        });
+      let placesUrl: string;
+      if (lat && lng) {
+        placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent("tennis stringer")}&location=${lat},${lng}&radius=25000&key=${apiKey}`;
+      } else if (query) {
+        placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(`tennis stringer near ${query}`)}&key=${apiKey}`;
+      } else {
+        return res.json([]);
       }
+
+      const placesRes = await fetch(placesUrl);
+
+      if (!placesRes.ok) {
+        console.error(`[stringers] Google Places returned ${placesRes.status}`);
+        return res.json([]);
+      }
+
+      const ct = placesRes.headers.get("content-type") ?? "";
+      if (!ct.includes("json")) {
+        const body = await placesRes.text();
+        console.error("[stringers] Google Places returned non-JSON:", body.slice(0, 200));
+        return res.json([]);
+      }
+
+      const placesData = await placesRes.json();
+
+      if (placesData.status !== "OK" && placesData.status !== "ZERO_RESULTS") {
+        console.error("[stringers] Google Places error:", placesData.status, placesData.error_message);
+        return res.json([]);
+      }
+
+      const results = (placesData.results || []).map((place: any) => ({
+        name: place.name,
+        address: place.formatted_address || "",
+        place_id: place.place_id,
+        geometry: place.geometry,
+        types: place.types || [],
+        website: undefined as string | undefined,
+        phone: undefined as string | undefined,
+      }));
 
       res.json(results);
     } catch (error) {

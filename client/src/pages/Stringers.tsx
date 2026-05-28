@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, MapPin, Phone, Globe, Lock, Navigation, Bookmark } from "lucide-react";
 import { Link } from "wouter";
 import { Input } from "@/components/ui/input";
@@ -11,13 +11,19 @@ const FREE_LIMIT = 3;
 
 export default function Stringers() {
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [coords, setCoords] = useState<{ lat: string; lng: string } | null>(null);
   const [locating, setLocating] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 800);
+    return () => clearTimeout(t);
+  }, [query]);
 
   const { canViewAllStringers, isAdmin } = useUser();
 
   const { data: results = [], isLoading } = useStringers({
-    query,
+    query: debouncedQuery,
     lat: coords?.lat,
     lng: coords?.lng,
   });
