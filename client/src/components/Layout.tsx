@@ -81,7 +81,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </Button>
               </Link>
             )}
-            {isLoggedIn ? (
+            {!loading && (isLoggedIn ? (
               <div className="flex items-center gap-3">
                 <span className="text-[11px] text-net-grey max-w-[140px] truncate">{firstName ?? email}</span>
                 <Button
@@ -116,7 +116,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </Button>
                 </Link>
               </div>
-            )}
+            ))}
           </nav>
 
           <button
@@ -153,7 +153,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </Button>
               </Link>
             )}
-            {isLoggedIn ? (
+            {!loading && (isLoggedIn ? (
               <>
                 <p className="text-[11px] text-net-grey px-2 mt-2 truncate">{firstName ?? email}</p>
                 <Button
@@ -185,7 +185,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </Button>
                 </Link>
               </>
-            )}
+            ))}
           </div>
         )}
       </header>
