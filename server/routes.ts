@@ -317,49 +317,45 @@ export async function registerRoutes(
     try {
       let { query, lat, lng } = req.query as { query?: string; lat?: string; lng?: string };
 
+      const OSM_HEADERS = {
+        "User-Agent": "10isCompanion/1.0 (tennis-string-app)",
+        "Accept": "application/json",
+      };
+
+      async function safeJson(response: Response, label: string) {
+        const ct = response.headers.get("content-type") ?? "";
+        if (!response.ok || !ct.includes("json")) {
+          const body = await response.text();
+          console.error(`[stringers] ${label} returned non-JSON (${response.status}):`, body.slice(0, 200));
+          return null;
+        }
+        return response.json();
+      }
+
       // If no coords, geocode the text query via Nominatim
       if ((!lat || !lng) && query) {
         const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
-        const geoRes = await fetch(geoUrl, {
-          headers: { "User-Agent": "10isCompanion/1.0 (tennis-string-app)" },
-        });
-        const geoData = await geoRes.json();
-        if (!geoData || geoData.length === 0) {
-          return res.json([]);
-        }
+        const geoRes = await fetch(geoUrl, { headers: OSM_HEADERS });
+        const geoData = await safeJson(geoRes, "Nominatim geocode");
+        if (!geoData || geoData.length === 0) return res.json([]);
         lat = geoData[0].lat;
         lng = geoData[0].lon;
       }
 
       if (!lat || !lng) return res.json([]);
 
-      // Overpass query: sport shops, tennis clubs, sports centres within 25 km
+      // Overpass query sent as POST to avoid URL-length limits that cause XML error responses
       const radius = 25000;
-      const overpassQuery = `
-        [out:json][timeout:30];
-        (
-          node["shop"="sports"](around:${radius},${lat},${lng});
-          way["shop"="sports"](around:${radius},${lat},${lng});
-          node["shop"="tennis"](around:${radius},${lat},${lng});
-          way["shop"="tennis"](around:${radius},${lat},${lng});
-          node["sport"="tennis"]["leisure"="sports_centre"](around:${radius},${lat},${lng});
-          way["sport"="tennis"]["leisure"="sports_centre"](around:${radius},${lat},${lng});
-          node["sport"="tennis"]["leisure"="sports_club"](around:${radius},${lat},${lng});
-          way["sport"="tennis"]["leisure"="sports_club"](around:${radius},${lat},${lng});
-          node["leisure"="sports_centre"]["sport"="tennis"](around:${radius},${lat},${lng});
-          node["amenity"="sporting_goods"](around:${radius},${lat},${lng});
-          node["name"~"tennis|racket|racquet|sport|stringing",i]["shop"](around:${radius},${lat},${lng});
-        );
-        out center 40;
-      `;
+      const overpassQuery = `[out:json][timeout:30];(node["shop"="sports"](around:${radius},${lat},${lng});way["shop"="sports"](around:${radius},${lat},${lng});node["shop"="tennis"](around:${radius},${lat},${lng});way["shop"="tennis"](around:${radius},${lat},${lng});node["sport"="tennis"]["leisure"="sports_centre"](around:${radius},${lat},${lng});way["sport"="tennis"]["leisure"="sports_centre"](around:${radius},${lat},${lng});node["sport"="tennis"]["leisure"="sports_club"](around:${radius},${lat},${lng});way["sport"="tennis"]["leisure"="sports_club"](around:${radius},${lat},${lng});node["amenity"="sporting_goods"](around:${radius},${lat},${lng});node["name"~"tennis|racket|racquet|stringing",i]["shop"](around:${radius},${lat},${lng}););out center 40;`;
 
-      const overpassUrl = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`;
-      const overpassRes = await fetch(overpassUrl, {
-        headers: { "User-Agent": "10isCompanion/1.0 (tennis-string-app)" },
+      const overpassRes = await fetch("https://overpass-api.de/api/interpreter", {
+        method: "POST",
+        headers: { ...OSM_HEADERS, "Content-Type": "application/x-www-form-urlencoded" },
+        body: `data=${encodeURIComponent(overpassQuery)}`,
       });
-      const overpassData = await overpassRes.json();
+      const overpassData = await safeJson(overpassRes, "Overpass");
 
-      if (!overpassData.elements || overpassData.elements.length === 0) {
+      if (!overpassData || !overpassData.elements || overpassData.elements.length === 0) {
         return res.json([]);
       }
 
@@ -387,11 +383,9 @@ export async function registerRoutes(
         if (!address && elLat && elLon) {
           try {
             const revUrl = `https://nominatim.openstreetmap.org/reverse?lat=${elLat}&lon=${elLon}&format=json`;
-            const revRes = await fetch(revUrl, {
-              headers: { "User-Agent": "10isCompanion/1.0 (tennis-string-app)" },
-            });
-            const revData = await revRes.json();
-            address = revData.display_name || `${elLat}, ${elLon}`;
+            const revRes = await fetch(revUrl, { headers: OSM_HEADERS });
+            const revData = await safeJson(revRes, "Nominatim reverse");
+            address = revData?.display_name || `${elLat}, ${elLon}`;
           } catch {
             address = `${elLat}, ${elLon}`;
           }
