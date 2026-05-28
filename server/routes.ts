@@ -544,7 +544,7 @@ export async function registerRoutes(
 
   app.post("/api/checkout/pro", async (req, res) => {
     try {
-      const { email } = req.body;
+      const email = getUserEmail(req) || req.body.email;
       if (!email) return res.status(400).json({ message: "Email required" });
       const session = await getStripe().checkout.sessions.create({
         payment_method_types: ["card"],
@@ -571,7 +571,7 @@ export async function registerRoutes(
 
   app.post("/api/checkout/club", async (req, res) => {
     try {
-      const { email } = req.body;
+      const email = getUserEmail(req) || req.body.email;
       if (!email) return res.status(400).json({ message: "Email required" });
       const session = await getStripe().checkout.sessions.create({
         payment_method_types: ["card"],
