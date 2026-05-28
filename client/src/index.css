@@ -34,4 +34,8 @@
     @apply bg-background text-foreground;
     font-family: "Inter", system-ui, sans-serif;
   }
+
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }
