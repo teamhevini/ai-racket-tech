@@ -68,7 +68,10 @@ export async function registerRoutes(
   app.get(api.rackets.search.path, async (req, res) => {
     try {
       const query = req.query.q as string;
-      if (!query) return res.json([]);
+      if (!query) {
+        const all = await storage.getAllRackets();
+        return res.json(all);
+      }
       const results = await storage.searchRackets(query);
       res.json(results);
     } catch (error) {

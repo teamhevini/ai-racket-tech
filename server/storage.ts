@@ -89,7 +89,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllRackets(): Promise<Racket[]> {
-    return await db.select().from(rackets).limit(100);
+    return await db
+      .select()
+      .from(rackets)
+      .orderBy(sql`(${rackets.brand} = 'Hevini') DESC, ${rackets.brand}, ${rackets.model}`)
+      .limit(300);
   }
 
   async createRecommendationRun(insertRun: InsertRun): Promise<RecommendationRun> {
