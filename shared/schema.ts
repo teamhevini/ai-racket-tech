@@ -94,7 +94,7 @@ export const savedRackets = pgTable("saved_rackets", {
   nickname: text("nickname").notNull(),
   brand: text("brand"),
   model: text("model"),
-  headSize: integer("head_size"),
+  headSize: text("head_size"),
   stringPattern: text("string_pattern"),
   weight: real("weight"),
   createdAt: timestamp("created_at").defaultNow(),
