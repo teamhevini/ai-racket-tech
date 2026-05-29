@@ -18,6 +18,9 @@ import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import Admin from "@/pages/Admin";
 import Account from "@/pages/Account";
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
+import About from "@/pages/About";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -36,6 +39,9 @@ function Router() {
         <Route path="/signup" component={Signup} />
         <Route path="/admin" component={Admin} />
         <Route path="/account" component={Account} />
+        <Route path="/privacy" component={Privacy} />
+        <Route path="/terms" component={Terms} />
+        <Route path="/about" component={About} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
