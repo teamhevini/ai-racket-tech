@@ -3,6 +3,7 @@ import { Menu, X, Zap } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChatBot } from "@/components/ChatBot";
+import { WelcomeModal } from "@/components/WelcomeModal";
 import { useUser } from "@/contexts/UserContext";
 import signatureLogo from "@/assets/Hevini_08_Signature.png";
 
@@ -192,6 +193,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1">{children}</main>
 
+      <WelcomeModal />
       <ChatBot />
 
       <footer className="bg-court-black border-t border-[#1A1A1A] text-court-white py-12 mt-12">
