@@ -62,11 +62,11 @@ app.use((_req, res, next) => {
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://www.googletagmanager.com https://www.google-analytics.com https://umami-production-e10c.up.railway.app",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob:",
-      "connect-src 'self' https://api.stripe.com https://overpass-api.de https://nominatim.openstreetmap.org",
+      "img-src 'self' data: https:",
+      "connect-src 'self' https://api.stripe.com https://nominatim.openstreetmap.org https://www.googletagmanager.com https://www.google-analytics.com https://umami-production-e10c.up.railway.app https://maps.googleapis.com",
       "frame-src https://js.stripe.com https://hooks.stripe.com",
     ].join("; ")
   );
