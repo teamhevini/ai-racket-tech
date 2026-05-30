@@ -40,7 +40,7 @@ export default function Home() {
                   className="h-12 px-8 bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] text-xs font-bold uppercase border-0 w-full sm:w-auto"
                   style={{ letterSpacing: "0.1em" }}
                 >
-                  GET MY RECOMMENDATION <ArrowRight className="ml-3 w-4 h-4" />
+                  GET YOUR FREE SETUP <ArrowRight className="ml-3 w-4 h-4" />
                 </Button>
               </Link>
               <Link href="/rackets">

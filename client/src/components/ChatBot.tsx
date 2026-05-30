@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
 import { useUser } from "@/contexts/UserContext";
 import signatureLogo from "@/assets/Hevini_08_Signature.png";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -202,9 +203,17 @@ export function ChatBot() {
                             : "bg-[#1A1A1A] text-court-white rounded-[4px] rounded-bl-none"
                         }`}
                       >
-                        {msg.content}
-                        {msg.streaming && (
-                          <span className="inline-block w-1.5 h-3.5 bg-current ml-0.5 rounded-sm animate-pulse" />
+                        {msg.role === "assistant" ? (
+                          <div className="prose prose-sm prose-invert max-w-none [&_p]:mb-1 [&_p:last-child]:mb-0 [&_ul]:mt-1 [&_ul]:mb-1 [&_ol]:mt-1 [&_ol]:mb-1 [&_li]:mb-0.5 [&_strong]:text-court-white [&_code]:bg-[#111] [&_code]:px-1 [&_code]:rounded [&_code]:text-xs">
+                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                            {msg.streaming && (
+                              <span className="inline-block w-1.5 h-3.5 bg-current ml-0.5 rounded-sm animate-pulse" />
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            {msg.content}
+                          </>
                         )}
                       </div>
                     </motion.div>

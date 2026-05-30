@@ -573,13 +573,16 @@ function StringersTab() {
               {s.stringerAddress && <p className="text-net-grey text-xs mt-0.5">{s.stringerAddress}</p>}
               <p className="text-[#444] text-[10px] mt-0.5">Saved {s.createdAt ? new Date(s.createdAt).toLocaleDateString() : ""}</p>
             </div>
-            <div className="flex gap-2 shrink-0">
-              <Link href="/stringers">
-                <Button size="sm" className="h-7 px-3 bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] border-0 text-[10px] font-bold uppercase" style={{ letterSpacing: "0.08em" }}>BOOK</Button>
-              </Link>
-              <Button size="sm" variant="outline" onClick={() => remove(s.id)} className="h-7 w-7 p-0 rounded-[2px] border-[#333] text-net-grey hover:border-hevini-red hover:text-hevini-red">
-                <Trash2 className="w-3 h-3" />
-              </Button>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <div className="flex gap-2">
+                <Link href="/stringers">
+                  <Button size="sm" className="h-7 px-3 bg-[#1A1A1A] hover:bg-[#222] text-net-grey border border-[#2A2A2A] rounded-[2px] text-[10px] font-bold uppercase" style={{ letterSpacing: "0.08em" }}>VIEW DETAILS</Button>
+                </Link>
+                <Button size="sm" variant="outline" onClick={() => remove(s.id)} className="h-7 w-7 p-0 rounded-[2px] border-[#333] text-net-grey hover:border-hevini-red hover:text-hevini-red">
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+              <p className="text-[9px] text-[#444]" style={{ letterSpacing: "0.04em" }}>Contact stringer directly to book</p>
             </div>
           </div>
           <div className="flex gap-2">

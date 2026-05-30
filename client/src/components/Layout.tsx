@@ -24,7 +24,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { label: "STRINGERS", path: "/stringers" },
     { label: "SETUP", path: "/onboarding" },
     { label: "PRICING", path: "/pricing" },
-    ...(isLoggedIn ? [{ label: "ACCOUNT", path: "/account" }] : []),
+    { label: "ABOUT", path: "/about" },
   ];
 
   return (
@@ -53,7 +53,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-6">
+            {/* Primary nav links */}
             {navItems.map((item) => {
               const active = location === item.path;
               return (
@@ -69,6 +70,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+
+            {/* Separator */}
+            <div className="w-px h-4 bg-[#2A2A2A] shrink-0" />
+
+            {/* Account section */}
             {showUpgrade && (
               <Link href="/pricing">
                 <Button
@@ -84,7 +90,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
             {!loading && (isLoggedIn ? (
               <div className="flex items-center gap-3">
-                <span className="text-[11px] text-net-grey max-w-[140px] truncate">{firstName ?? email}</span>
+                <span className="text-[11px] text-net-grey max-w-[120px] truncate">{firstName ?? email}</span>
+                <Link href="/account">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 px-4 rounded-[2px] text-xs font-bold uppercase border-[#333] text-net-grey hover:border-court-white hover:text-court-white transition-colors"
+                    style={{ letterSpacing: "0.1em" }}
+                  >
+                    ACCOUNT
+                  </Button>
+                </Link>
                 <Button
                   size="sm"
                   variant="outline"
@@ -142,6 +158,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {item.label}
               </Link>
             ))}
+            {isLoggedIn && (
+              <Link
+                href="/account"
+                className="px-2 py-3 text-court-white font-bold text-base"
+                style={{ letterSpacing: "0.08em" }}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                ACCOUNT
+              </Link>
+            )}
             {showUpgrade && (
               <Link href="/pricing" onClick={() => setMobileMenuOpen(false)}>
                 <Button

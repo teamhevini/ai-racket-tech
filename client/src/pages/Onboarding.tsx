@@ -36,9 +36,19 @@ export default function Onboarding() {
   const { isPro, isAdmin, loading } = useUser();
   const { mutate, isPending } = useCreateRecommendation();
 
-  const [racketQuery, setRacketQuery] = useState("");
-  const [selectedRacketId, setSelectedRacketId] = useState<number | null>(null);
-  const [selectedRacketName, setSelectedRacketName] = useState("");
+  const [racketQuery, setRacketQuery] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return decodeURIComponent(params.get("racketName") || "");
+  });
+  const [selectedRacketId, setSelectedRacketId] = useState<number | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("racketId");
+    return id ? Number(id) : null;
+  });
+  const [selectedRacketName, setSelectedRacketName] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return decodeURIComponent(params.get("racketName") || "");
+  });
   const [showDropdown, setShowDropdown] = useState(false);
   const debouncedQuery = useDebounce(racketQuery, 300);
   const { data: racketResults = [] } = useSearchRackets(debouncedQuery);
