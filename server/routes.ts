@@ -854,15 +854,18 @@ async function seedAdminUser() {
 
 async function seedDatabase() {
   const existing = await storage.getAllRackets();
-  // Reseed if v3 sentinel missing (requires both Hevini + Slazenger brand).
+  // Reseed if v4 sentinel missing (requires Hevini, Slazenger, and Wilson Defyer).
   // Existing recommendation_runs are preserved (FK nullified).
   const hasHevini = existing.some(
     (r) => r.brand === "Hevini" && r.model === "Solution 1"
   );
   const hasV3 = existing.some((r) => r.brand === "Slazenger");
-  if (existing.length > 0 && hasHevini && hasV3) return;
+  const hasV4 = existing.some(
+    (r) => r.brand === "Wilson" && r.model === "Defyer 100"
+  );
+  if (existing.length > 0 && hasHevini && hasV3 && hasV4) return;
   if (existing.length > 0) {
-    console.log(`[seed] Resetting ${existing.length} rackets with v3 spec list...`);
+    console.log(`[seed] Resetting ${existing.length} rackets with v4 spec list...`);
     await storage.resetRackets();
   }
 
@@ -891,6 +894,17 @@ async function seedDatabase() {
     { brand: "Wilson", model: "Ultra 100L v4", headSize: 100, stringPattern: "16x19", weightUnstrung: 277, balance: "2 pts HL", stiffnessRa: 68, beamWidth: "26mm", recTensionMin: 48, recTensionMax: 58, level: "beginner" },
     { brand: "Wilson", model: "Pro Staff 85 v14", headSize: 85, stringPattern: "16x19", weightUnstrung: 340, balance: "9 pts HL", stiffnessRa: 65, beamWidth: "20mm", recTensionMin: 50, recTensionMax: 62, level: "pro" },
     { brand: "Wilson", model: "Shift 99L v1", headSize: 99, stringPattern: "16x19", weightUnstrung: 280, balance: "2 pts HL", stiffnessRa: 61, beamWidth: "21mm", recTensionMin: 46, recTensionMax: 56, level: "intermediate" },
+
+    // ── WILSON DEFYER (2026 — new franchise, featured #2 after Hevini) ──
+    { brand: "Wilson", model: "Defyer 98 Pro", headSize: 98, stringPattern: "16x20", weightUnstrung: 305, balance: "7 pts HL", stiffnessRa: 65, beamWidth: "22/23.5/22mm", recTensionMin: 50, recTensionMax: 60, level: "advanced", year: 2026, sourceUrl: "https://www.wilson.com/en-us/blog/tennis/introducing-wilson-defyer-tennis-racket" },
+    { brand: "Wilson", model: "Defyer 100", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "9 pts HL", stiffnessRa: 66, beamWidth: "23.75/25/23mm", recTensionMin: 50, recTensionMax: 60, level: "intermediate", year: 2026, sourceUrl: "https://www.wilson.com/en-us/blog/tennis/introducing-wilson-defyer-tennis-racket" },
+    { brand: "Wilson", model: "Defyer 100L", headSize: 100, stringPattern: "16x19", weightUnstrung: 285, balance: "4 pts HL", stiffnessRa: 66, beamWidth: "23.75/25/23mm", recTensionMin: 48, recTensionMax: 58, level: "beginner", year: 2026, sourceUrl: "https://www.wilson.com/en-us/blog/tennis/introducing-wilson-defyer-tennis-racket" },
+
+    // ── WILSON BLADE v10 (2026) ──
+    { brand: "Wilson", model: "Blade 98 Pro v10 16x19", headSize: 98, stringPattern: "16x19", weightUnstrung: 305, balance: "6 pts HL", stiffnessRa: 62, beamWidth: "21mm", recTensionMin: 50, recTensionMax: 60, level: "advanced", year: 2026 },
+    { brand: "Wilson", model: "Blade 100 v10", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "5 pts HL", stiffnessRa: 62, beamWidth: "21mm", recTensionMin: 50, recTensionMax: 60, level: "intermediate", year: 2026 },
+    { brand: "Wilson", model: "Blade 100L v10", headSize: 100, stringPattern: "16x19", weightUnstrung: 284, balance: "2 pts HL", stiffnessRa: 62, beamWidth: "21mm", recTensionMin: 48, recTensionMax: 58, level: "beginner", year: 2026 },
+    { brand: "Wilson", model: "Blade 104 v10", headSize: 104, stringPattern: "16x19", weightUnstrung: 290, balance: "4 pts HL", stiffnessRa: 60, beamWidth: "21mm", recTensionMin: 48, recTensionMax: 58, level: "intermediate", year: 2026 },
 
     // ── BABOLAT ──
     { brand: "Babolat", model: "Pure Aero 98 2023", headSize: 98, stringPattern: "16x20", weightUnstrung: 305, balance: "6 pts HL", stiffnessRa: 66, beamWidth: "21/23/22mm", recTensionMin: 50, recTensionMax: 59 },
@@ -933,6 +947,7 @@ async function seedDatabase() {
     { brand: "Head", model: "Gravity MP L 2023", headSize: 100, stringPattern: "16x20", weightUnstrung: 275, balance: "2 pts HL", stiffnessRa: 59, beamWidth: "23mm", recTensionMin: 46, recTensionMax: 56, level: "beginner" },
     { brand: "Head", model: "Prestige Mid 2023", headSize: 93, stringPattern: "18x20", weightUnstrung: 335, balance: "9 pts HL", stiffnessRa: 63, beamWidth: "19mm", recTensionMin: 52, recTensionMax: 62, level: "pro" },
     { brand: "Head", model: "Radical MP L 2023", headSize: 98, stringPattern: "18x20", weightUnstrung: 280, balance: "2 pts HL", stiffnessRa: 64, beamWidth: "22mm", recTensionMin: 48, recTensionMax: 58, level: "intermediate" },
+    { brand: "Head", model: "Speed Tour 2026", headSize: 97, stringPattern: "16x19", weightUnstrung: 305, balance: "7 pts HL", stiffnessRa: 62, beamWidth: "23mm", recTensionMin: 48, recTensionMax: 57, level: "advanced", year: 2026, sourceUrl: "https://www.tennis-warehouse.com/Head_Speed_Tour_2026/descpageRCHEAD-HSPDT6.html" },
 
     // ── YONEX ──
     { brand: "Yonex", model: "EZONE 98 2022", headSize: 98, stringPattern: "16x19", weightUnstrung: 305, balance: "4 pts HL", stiffnessRa: 65, beamWidth: "23mm", recTensionMin: 45, recTensionMax: 60 },
@@ -951,6 +966,9 @@ async function seedDatabase() {
     { brand: "Yonex", model: "VCORE 100L 2023", headSize: 100, stringPattern: "16x19", weightUnstrung: 280, balance: "2 pts HL", stiffnessRa: 66, beamWidth: "22mm", recTensionMin: 45, recTensionMax: 58, level: "beginner" },
     { brand: "Yonex", model: "EZONE 98L 2022", headSize: 98, stringPattern: "16x19", weightUnstrung: 285, balance: "4 pts HL", stiffnessRa: 65, beamWidth: "23mm", recTensionMin: 45, recTensionMax: 58, level: "intermediate" },
     { brand: "Yonex", model: "EZONE 100L 2022", headSize: 100, stringPattern: "16x19", weightUnstrung: 275, balance: "2 pts HL", stiffnessRa: 65, beamWidth: "23mm", recTensionMin: 45, recTensionMax: 56, level: "beginner" },
+    { brand: "Yonex", model: "VCORE 100 2026", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "4 pts HL", stiffnessRa: 65, beamWidth: "24/26/23mm", recTensionMin: 45, recTensionMax: 60, level: "intermediate", year: 2026, sourceUrl: "https://www.tennisnerd.net/gear/racquets/yonex-vcore-2026-review/62233" },
+    { brand: "Yonex", model: "VCORE 100D 2026", headSize: 100, stringPattern: "16x20", weightUnstrung: 305, balance: "6 pts HL", stiffnessRa: 65, beamWidth: "24/26/23mm", recTensionMin: 45, recTensionMax: 60, level: "advanced", year: 2026, sourceUrl: "https://www.tennis-warehouse.com/Yonex_VCORE_100D_8th_Gen/descpageRCYONEX-VC1D8G.html" },
+    { brand: "Yonex", model: "VCORE 95 2026", headSize: 95, stringPattern: "16x20", weightUnstrung: 310, balance: "6 pts HL", stiffnessRa: 63, beamWidth: "21mm", recTensionMin: 50, recTensionMax: 62, level: "pro", year: 2026, sourceUrl: "https://www.tennis-warehouse.com/Yonex_VCORE_95_8th_Gen/descpageRCYONEX-VC958G.html" },
 
     // ── DUNLOP ──
     { brand: "Dunlop", model: "CX 200 2021", headSize: 98, stringPattern: "16x19", weightUnstrung: 305, balance: "5 pts HL", stiffnessRa: 62, beamWidth: "21mm", recTensionMin: 45, recTensionMax: 65 },
@@ -999,6 +1017,9 @@ async function seedDatabase() {
     { brand: "Solinco", model: "Whiteout 305 XTD 18x20", headSize: 98, stringPattern: "18x20", weightUnstrung: 305, balance: "7 pts HL", stiffnessRa: 65, beamWidth: "22mm", recTensionMin: 45, recTensionMax: 55 },
     { brand: "Solinco", model: "Blackout 300", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "4 pts HL", stiffnessRa: 64, beamWidth: "23mm", recTensionMin: 45, recTensionMax: 55 },
     { brand: "Solinco", model: "Whiteout 290", headSize: 98, stringPattern: "16x19", weightUnstrung: 290, balance: "3 pts HL", stiffnessRa: 64, beamWidth: "22mm", recTensionMin: 45, recTensionMax: 55 },
+    { brand: "Solinco", model: "Whiteout V2 305", headSize: 98, stringPattern: "16x19", weightUnstrung: 305, balance: "6 pts HL", stiffnessRa: 65, beamWidth: "21.7mm", recTensionMin: 45, recTensionMax: 55, level: "advanced", year: 2025, sourceUrl: "https://solincosports.com/equipment/whiteout-305-v2/" },
+    { brand: "Solinco", model: "Blackout V2 300", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "5 pts HL", stiffnessRa: 62, beamWidth: "23.5/26/23mm", recTensionMin: 48, recTensionMax: 58, level: "intermediate", year: 2025, sourceUrl: "https://solincosports.com/equipment/blackout-v2-300/" },
+    { brand: "Solinco", model: "Blackout V2 110", headSize: 110, stringPattern: "16x19", weightUnstrung: 268, balance: "1 pt HL", stiffnessRa: 60, beamWidth: "23.5/26/23mm", recTensionMin: 45, recTensionMax: 55, level: "beginner", year: 2025, sourceUrl: "https://solincosports.com/equipment/blackout-v2-110/" },
 
     // ── VÖLKL ──
     { brand: "Völkl", model: "C10 Pro 2023", headSize: 98, stringPattern: "16x19", weightUnstrung: 330, balance: "9 pts HL", stiffnessRa: 58, beamWidth: "22mm", recTensionMin: 50, recTensionMax: 60 },
@@ -1033,6 +1054,6 @@ async function seedDatabase() {
   for (const r of rackets) {
     await storage.createRacket(r as any);
   }
-  console.log(`[seed] Inserted ${rackets.length} rackets (v3 spec list).`);
+  console.log(`[seed] Inserted ${rackets.length} rackets (v4 spec list).`);
 }
 

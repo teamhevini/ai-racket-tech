@@ -202,6 +202,8 @@ export default function Rackets() {
     return [...map.entries()].sort(([a], [b]) => {
       if (a === "Hevini") return -1;
       if (b === "Hevini") return 1;
+      if (a === "Wilson") return -1;
+      if (b === "Wilson") return 1;
       return a.localeCompare(b);
     });
   }, [filtered]);
@@ -368,6 +370,14 @@ function RacketCard({
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {racket.year != null && racket.year >= 2025 && (
+            <span
+              className="text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-900 px-2 py-0.5 rounded-[2px] uppercase"
+              style={{ letterSpacing: "0.1em" }}
+            >
+              NEW
+            </span>
+          )}
           {racket.level && (
             <span
               className={`text-[9px] font-bold border px-2 py-0.5 rounded-[2px] uppercase ${levelCls}`}

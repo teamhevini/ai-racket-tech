@@ -73,7 +73,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(rackets)
       .where(or(ilike(rackets.brand, search), ilike(rackets.model, search)))
-      .orderBy(sql`(${rackets.brand} = 'Hevini') DESC, ${rackets.brand}, ${rackets.model}`)
+      .orderBy(sql`(${rackets.brand} = 'Hevini') DESC, (${rackets.brand} = 'Wilson' AND ${rackets.model} ILIKE 'Defyer%') DESC, ${rackets.brand}, ${rackets.model}`)
       .limit(20);
   }
 
@@ -92,7 +92,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(rackets)
-      .orderBy(sql`(${rackets.brand} = 'Hevini') DESC, ${rackets.brand}, ${rackets.model}`)
+      .orderBy(sql`(${rackets.brand} = 'Hevini') DESC, (${rackets.brand} = 'Wilson' AND ${rackets.model} ILIKE 'Defyer%') DESC, ${rackets.brand}, ${rackets.model}`)
       .limit(300);
   }
 
