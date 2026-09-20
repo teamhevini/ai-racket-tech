@@ -859,10 +859,10 @@ async function seedDatabase() {
   const hasHevini = existing.some(
     (r) => r.brand === "Hevini" && r.model === "Solution 1"
   );
-  const hasV3 = existing.some((r) => r.brand === "Slazenger");
-  if (existing.length > 0 && hasHevini && hasV3) return;
+  const hasV4 = existing.some((r) => r.brand === "Wilson" && r.model === "Defyer 98");
+  if (existing.length > 0 && hasHevini && hasV4) return;
   if (existing.length > 0) {
-    console.log(`[seed] Resetting ${existing.length} rackets with v3 spec list...`);
+    console.log(`[seed] Resetting ${existing.length} rackets with v4 spec list...`);
     await storage.resetRackets();
   }
 
@@ -871,6 +871,10 @@ async function seedDatabase() {
     { brand: "Hevini", model: "Solution 1", headSize: 97, stringPattern: "16x19", weightUnstrung: 300, balance: "7 pts HL", stiffnessRa: 68, beamWidth: "21mm", recTensionMin: 48, recTensionMax: 55, sourceUrl: "https://hevinisporting.com", level: "advanced" },
 
     // ── WILSON ──
+    // Defyer line (2026) – featured
+    { brand: "Wilson", model: "Defyer 98", headSize: 98, stringPattern: "16x20", weightUnstrung: 305, balance: "6 pts HL", stiffnessRa: 63, beamWidth: "22/23.5/22mm", recTensionMin: 48, recTensionMax: 58, level: "advanced", year: 2026 },
+    { brand: "Wilson", model: "Defyer 98 Pro", headSize: 98, stringPattern: "16x20", weightUnstrung: 305, balance: "7 pts HL", stiffnessRa: 64, beamWidth: "22/23.5/22mm", recTensionMin: 48, recTensionMax: 58, level: "pro", year: 2026 },
+    { brand: "Wilson", model: "Defyer 100", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "6 pts HL", stiffnessRa: 66, beamWidth: "23.75/25/23mm", recTensionMin: 50, recTensionMax: 60, level: "intermediate", year: 2026 },
     { brand: "Wilson", model: "Blade 98 16x19 v9", headSize: 98, stringPattern: "16x19", weightUnstrung: 305, balance: "5 pts HL", stiffnessRa: 62, beamWidth: "21mm", recTensionMin: 50, recTensionMax: 60 },
     { brand: "Wilson", model: "Blade 98 18x20 v9", headSize: 98, stringPattern: "18x20", weightUnstrung: 310, balance: "5 pts HL", stiffnessRa: 62, beamWidth: "21mm", recTensionMin: 50, recTensionMax: 60 },
     { brand: "Wilson", model: "Blade 100 v9", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "4 pts HL", stiffnessRa: 62, beamWidth: "23mm", recTensionMin: 50, recTensionMax: 60 },
@@ -893,6 +897,11 @@ async function seedDatabase() {
     { brand: "Wilson", model: "Shift 99L v1", headSize: 99, stringPattern: "16x19", weightUnstrung: 280, balance: "2 pts HL", stiffnessRa: 61, beamWidth: "21mm", recTensionMin: 46, recTensionMax: 56, level: "intermediate" },
 
     // ── BABOLAT ──
+    // Gen 11 Pure Drive (2025) — Woofer 2.0, RA lowered from 71 to 68
+    { brand: "Babolat", model: "Pure Drive Gen 11 2025", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "4 pts HL", stiffnessRa: 68, beamWidth: "23/26/23mm", recTensionMin: 50, recTensionMax: 59, year: 2025 },
+    // Pure Aero 2026 (Gen 9)
+    { brand: "Babolat", model: "Pure Aero 2026", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "4 pts HL", stiffnessRa: 66, beamWidth: "23/26/23mm", recTensionMin: 50, recTensionMax: 59, year: 2026 },
+    { brand: "Babolat", model: "Pure Aero 98 2026", headSize: 98, stringPattern: "16x20", weightUnstrung: 305, balance: "6 pts HL", stiffnessRa: 65, beamWidth: "21/23/22mm", recTensionMin: 50, recTensionMax: 59, year: 2026 },
     { brand: "Babolat", model: "Pure Aero 98 2023", headSize: 98, stringPattern: "16x20", weightUnstrung: 305, balance: "6 pts HL", stiffnessRa: 66, beamWidth: "21/23/22mm", recTensionMin: 50, recTensionMax: 59 },
     { brand: "Babolat", model: "Pure Aero 100 2023", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "6 pts HL", stiffnessRa: 69, beamWidth: "23/26/23mm", recTensionMin: 50, recTensionMax: 59 },
     { brand: "Babolat", model: "Pure Aero Rafa 2023", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "5 pts HL", stiffnessRa: 70, beamWidth: "23/26/23mm", recTensionMin: 50, recTensionMax: 59 },
@@ -912,6 +921,12 @@ async function seedDatabase() {
     { brand: "Babolat", model: "Pure Strike Team v4", headSize: 100, stringPattern: "16x19", weightUnstrung: 285, balance: "4 pts HL", stiffnessRa: 67, beamWidth: "21-24mm", recTensionMin: 48, recTensionMax: 57, level: "intermediate" },
 
     // ── HEAD ──
+    // 2026 Speed generation (Hy-Bor tech)
+    { brand: "Head", model: "Speed MP 2026", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "4 pts HL", stiffnessRa: 60, beamWidth: "23mm", recTensionMin: 48, recTensionMax: 57, year: 2026 },
+    { brand: "Head", model: "Speed Pro 2026", headSize: 100, stringPattern: "18x20", weightUnstrung: 310, balance: "7 pts HL", stiffnessRa: 61, beamWidth: "23mm", recTensionMin: 48, recTensionMax: 57, level: "advanced", year: 2026 },
+    { brand: "Head", model: "Speed MP L 2026", headSize: 100, stringPattern: "16x19", weightUnstrung: 280, balance: "2 pts HL", stiffnessRa: 60, beamWidth: "23mm", recTensionMin: 46, recTensionMax: 55, level: "intermediate", year: 2026 },
+    { brand: "Head", model: "Extreme MP 2026", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "4 pts HL", stiffnessRa: 67, beamWidth: "21/26/21mm", recTensionMin: 48, recTensionMax: 57, year: 2026 },
+    { brand: "Head", model: "Boom MP 2026", headSize: 100, stringPattern: "16x19", weightUnstrung: 295, balance: "3 pts HL", stiffnessRa: 66, beamWidth: "25mm", recTensionMin: 50, recTensionMax: 59, year: 2026 },
     { brand: "Head", model: "Speed MP 2024", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "4 pts HL", stiffnessRa: 60, beamWidth: "23mm", recTensionMin: 48, recTensionMax: 57 },
     { brand: "Head", model: "Speed Pro 2024", headSize: 100, stringPattern: "18x20", weightUnstrung: 310, balance: "5 pts HL", stiffnessRa: 60, beamWidth: "23mm", recTensionMin: 48, recTensionMax: 57 },
     { brand: "Head", model: "Speed Pro Legend 2024", headSize: 100, stringPattern: "18x20", weightUnstrung: 310, balance: "5 pts HL", stiffnessRa: 60, beamWidth: "23mm", recTensionMin: 48, recTensionMax: 57 },
@@ -935,6 +950,8 @@ async function seedDatabase() {
     { brand: "Head", model: "Radical MP L 2023", headSize: 98, stringPattern: "18x20", weightUnstrung: 280, balance: "2 pts HL", stiffnessRa: 64, beamWidth: "22mm", recTensionMin: 48, recTensionMax: 58, level: "intermediate" },
 
     // ── YONEX ──
+    // 2026 8th-gen VCORE update (aerodynamic beam, wider grommet holes)
+    { brand: "Yonex", model: "VCORE 98 8th Gen", headSize: 98, stringPattern: "16x19", weightUnstrung: 305, balance: "6 pts HL", stiffnessRa: 66, beamWidth: "23/23.5/22mm", recTensionMin: 45, recTensionMax: 60, level: "advanced", year: 2026 },
     { brand: "Yonex", model: "EZONE 98 2022", headSize: 98, stringPattern: "16x19", weightUnstrung: 305, balance: "4 pts HL", stiffnessRa: 65, beamWidth: "23mm", recTensionMin: 45, recTensionMax: 60 },
     { brand: "Yonex", model: "EZONE 98 2025", headSize: 98, stringPattern: "16x19", weightUnstrung: 305, balance: "4 pts HL", stiffnessRa: 63, beamWidth: "24mm", recTensionMin: 45, recTensionMax: 60 },
     { brand: "Yonex", model: "EZONE 98 Tour 2022", headSize: 98, stringPattern: "16x19", weightUnstrung: 315, balance: "5 pts HL", stiffnessRa: 67, beamWidth: "23.5mm", recTensionMin: 45, recTensionMax: 60 },
@@ -995,6 +1012,9 @@ async function seedDatabase() {
     { brand: "Prince", model: "Phantom 100P 2022", headSize: 100, stringPattern: "16x18", weightUnstrung: 310, balance: "6 pts HL", stiffnessRa: 58, beamWidth: "21mm", recTensionMin: 48, recTensionMax: 58, level: "advanced" },
 
     // ── SOLINCO ──
+    // 2025 Blackout V2 (Arch-2 construction, Foam Tech Core)
+    { brand: "Solinco", model: "Blackout 300 v2 2025", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "4 pts HL", stiffnessRa: 68, beamWidth: "23.5/26/23mm", recTensionMin: 45, recTensionMax: 55, year: 2025 },
+    { brand: "Solinco", model: "Blackout 285 v2 2025", headSize: 100, stringPattern: "16x19", weightUnstrung: 285, balance: "3 pts HL", stiffnessRa: 67, beamWidth: "23.5/26/23mm", recTensionMin: 45, recTensionMax: 55, level: "intermediate", year: 2025 },
     { brand: "Solinco", model: "Whiteout 305", headSize: 98, stringPattern: "16x19", weightUnstrung: 305, balance: "5 pts HL", stiffnessRa: 65, beamWidth: "22mm", recTensionMin: 45, recTensionMax: 55 },
     { brand: "Solinco", model: "Whiteout 305 XTD 18x20", headSize: 98, stringPattern: "18x20", weightUnstrung: 305, balance: "7 pts HL", stiffnessRa: 65, beamWidth: "22mm", recTensionMin: 45, recTensionMax: 55 },
     { brand: "Solinco", model: "Blackout 300", headSize: 100, stringPattern: "16x19", weightUnstrung: 300, balance: "4 pts HL", stiffnessRa: 64, beamWidth: "23mm", recTensionMin: 45, recTensionMax: 55 },
@@ -1033,6 +1053,6 @@ async function seedDatabase() {
   for (const r of rackets) {
     await storage.createRacket(r as any);
   }
-  console.log(`[seed] Inserted ${rackets.length} rackets (v3 spec list).`);
+  console.log(`[seed] Inserted ${rackets.length} rackets (v4 spec list).`);
 }
 

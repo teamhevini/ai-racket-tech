@@ -202,6 +202,8 @@ export default function Rackets() {
     return [...map.entries()].sort(([a], [b]) => {
       if (a === "Hevini") return -1;
       if (b === "Hevini") return 1;
+      if (a === "Wilson") return -1;
+      if (b === "Wilson") return 1;
       return a.localeCompare(b);
     });
   }, [filtered]);
@@ -242,6 +244,7 @@ export default function Rackets() {
         <div className="space-y-12">
           {groups.map(([brand, brandRackets]) => {
             const isHevini = brand === "Hevini";
+            const hasDefyer = brand === "Wilson" && brandRackets.some(r => r.model.includes("Defyer"));
             const visible = canSeeAll ? brandRackets : brandRackets.slice(0, FREE_PER_BRAND);
             const hidden = canSeeAll ? [] : brandRackets.slice(FREE_PER_BRAND);
 
@@ -255,7 +258,7 @@ export default function Rackets() {
                   >
                     {brand}
                   </h2>
-                  {isHevini && (
+                  {(isHevini || hasDefyer) && (
                     <span
                       className="text-[9px] font-bold bg-hevini-red text-white px-2 py-0.5 rounded-[2px] shrink-0"
                       style={{ letterSpacing: "0.12em" }}
@@ -275,7 +278,7 @@ export default function Rackets() {
                     <RacketCard
                       key={r.id}
                       racket={r}
-                      featured={isHevini}
+                      featured={isHevini || r.model.includes("Defyer")}
                       onClick={() => setSelectedRacket(r)}
                     />
                   ))}
