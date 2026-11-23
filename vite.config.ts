@@ -17,5 +17,15 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Framework code changes rarely; keep it in its own long-cached chunk.
+        manualChunks: {
+          react: ["react", "react-dom", "wouter", "@tanstack/react-query"],
+          motion: ["framer-motion"],
+          ui: ["@radix-ui/react-dialog", "vaul", "sonner"],
+        },
+      },
+    },
   },
 });

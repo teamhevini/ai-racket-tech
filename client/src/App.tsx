@@ -4,7 +4,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { queryClient } from "@/lib/api";
 import { Layout } from "@/components/Layout";
-import { ChatBot } from "@/components/ChatBot";
 import { useTheme } from "@/hooks/use-theme";
 import Home from "@/pages/Home";
 
@@ -26,6 +25,8 @@ const About = lazy(() => import("@/pages/About"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const Terms = lazy(() => import("@/pages/Terms"));
 const NotFound = lazy(() => import("@/pages/not-found"));
+// The chat (and its Markdown renderer) loads after the page, never blocking first paint.
+const ChatBot = lazy(() => import("@/components/ChatBot").then((m) => ({ default: m.ChatBot })));
 
 function PageFallback() {
   return (
@@ -76,7 +77,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router />
-      <ChatBot />
+      <Suspense fallback={null}>
+        <ChatBot />
+      </Suspense>
       <ThemedToaster />
     </QueryClientProvider>
   );
