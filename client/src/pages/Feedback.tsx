@@ -1,132 +1,155 @@
-import { useState } from "react";
-import { useParams, useLocation, Link } from "wouter";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import * as React from "react";
+import { Link, useLocation } from "wouter";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { ArrowLeft, Info } from "lucide-react";
+import { Page } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { useSubmitFeedback } from "@/hooks/use-feedback";
-import { useToast } from "@/hooks/use-toast";
+import { Card, EmptyState, PageHeader } from "@/components/ui/surface";
+import { Field, Textarea, UnitInput } from "@/components/ui/field";
+import { api } from "@/lib/api";
+import type { RecommendationRunResponse } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+const SCALES = [
+  { key: "ratingPower", label: "Power", low: "Dead", high: "Launchy" },
+  { key: "ratingControl", label: "Control", low: "Spraying", high: "On a string" },
+  { key: "ratingComfort", label: "Comfort", low: "Harsh", high: "Plush" },
+] as const;
+
+type ScaleKey = (typeof SCALES)[number]["key"];
 
 export default function Feedback() {
-  const [, params] = [null, new URLSearchParams(window.location.search)];
-  const runId = Number(params.get("runId"));
   const [, navigate] = useLocation();
-  const { toast } = useToast();
-  const { mutate, isPending } = useSubmitFeedback();
+  const params = new URLSearchParams(window.location.search);
+  const runId = Number(params.get("run") ?? params.get("runId")) || null;
 
-  const [ratingPower, setRatingPower] = useState<number | null>(null);
-  const [ratingControl, setRatingControl] = useState<number | null>(null);
-  const [ratingComfort, setRatingComfort] = useState<number | null>(null);
-  const [comments, setComments] = useState("");
+  const run = useQuery<RecommendationRunResponse>({ queryKey: [`/api/recommendation-runs/${runId}`], enabled: !!runId });
+  const [ratings, setRatings] = React.useState<Record<ScaleKey, number | null>>({
+    ratingPower: null,
+    ratingControl: null,
+    ratingComfort: null,
+  });
+  const [hours, setHours] = React.useState("");
+  const [comments, setComments] = React.useState("");
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    mutate(
-      {
+  const submit = useMutation({
+    mutationFn: () =>
+      api("POST", "/api/feedback", {
         recommendationRunId: runId,
-        ratingPower,
-        ratingControl,
-        ratingComfort,
-        durabilityHours: null,
-        comments: comments || null,
-      },
-      {
-        onSuccess: () => {
-          toast({ title: "Feedback submitted!", description: "Thanks for helping us improve." });
-          navigate(runId ? `/recommendation/${runId}` : "/");
-        },
-        onError: () => {
-          toast({ title: "Error", description: "Failed to submit. Try again.", variant: "destructive" });
-        },
-      }
+        ...ratings,
+        durabilityHours: hours ? Number(hours) : null,
+        comments: comments.trim() || null,
+      }),
+    onSuccess: () => {
+      toast.success("Thanks — that helps us tune the next setup.");
+      navigate(`/recommendation/${runId}`);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't send feedback."),
+  });
+
+  if (!runId) {
+    return (
+      <Page narrow>
+        <EmptyState
+          icon={<Info />}
+          title="Which setup?"
+          body="Open a recommendation and tap “Rate this setup” to leave feedback."
+          action={
+            <Button asChild>
+              <Link href="/setup">Get a setup</Link>
+            </Button>
+          }
+        />
+      </Page>
     );
   }
 
+  const hasAny = Object.values(ratings).some((v) => v !== null) || !!hours || !!comments.trim();
+  const mains = run.data?.recommendation.setup.mains;
+
   return (
-    <div className="min-h-screen bg-court-black text-court-white">
-      <div className="container mx-auto px-4 py-12 max-w-xl">
-        <div className="mb-10">
-          <Link href={runId ? `/recommendation/${runId}` : "/"}>
-            <button className="flex items-center gap-2 text-net-grey hover:text-court-white text-sm transition-colors mb-8">
-              <ArrowLeft className="w-4 h-4" /> Back
-            </button>
-          </Link>
-          <h1
-            className="font-display font-black text-3xl md:text-4xl text-court-white uppercase mb-2"
-            style={{ letterSpacing: "0.04em" }}
-          >
-            Rate Your Setup
-          </h1>
-          <p className="text-net-grey text-sm">
-            Tell us how the recommendation performed on court.
-          </p>
-        </div>
+    <Page narrow>
+      <Button asChild variant="ghost" size="sm" className="-ml-3 mb-4">
+        <Link href={`/recommendation/${runId}`}>
+          <ArrowLeft /> Back to setup
+        </Link>
+      </Button>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <RatingGroup label="Power" value={ratingPower} onChange={setRatingPower} />
-          <RatingGroup label="Control" value={ratingControl} onChange={setRatingControl} />
-          <RatingGroup label="Comfort" value={ratingComfort} onChange={setRatingComfort} />
+      <PageHeader
+        eyebrow="Feedback"
+        title="How did it play?"
+        description={
+          mains ? (
+            <>
+              {mains.exampleStrings[0] ?? mains.stringFamily} at <span className="font-mono tabular">{mains.tension}</span> lbs
+              {run.data?.racketLabel ? ` in your ${run.data.racketLabel}` : ""}.
+            </>
+          ) : (
+            "Tell us how the strings felt after a few sessions."
+          )
+        }
+      />
 
-          <div className="space-y-2">
-            <Label className="text-xs font-bold uppercase text-net-grey" style={{ letterSpacing: "0.1em" }}>
-              Comments (optional)
-            </Label>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit.mutate();
+        }}
+        className="space-y-4"
+      >
+        {SCALES.map((s) => (
+          <Card key={s.key} className="p-5">
+            <fieldset>
+              <legend className="mb-3 font-semibold">{s.label}</legend>
+              <div className="grid grid-cols-5 gap-2" role="radiogroup" aria-label={s.label}>
+                {[1, 2, 3, 4, 5].map((n) => {
+                  const on = ratings[s.key] === n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => setRatings((r) => ({ ...r, [s.key]: on ? null : n }))}
+                      className={cn(
+                        "h-12 rounded-xl font-mono text-lg font-semibold tabular ring-1 transition-all duration-200 ease-spring active:scale-95",
+                        on ? "bg-ink text-bg ring-ink" : "bg-surface-2/60 text-muted ring-transparent hover:ring-line",
+                      )}
+                    >
+                      {n}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-2 flex justify-between text-xs text-faint">
+                <span>{s.low}</span>
+                <span>{s.high}</span>
+              </div>
+            </fieldset>
+          </Card>
+        ))}
+
+        <Card className="space-y-4 p-5">
+          <Field label="How long did the strings last?" optional hint="Hours of play before they felt dead or broke.">
+            <UnitInput unit="hours" value={hours} onChange={(e) => setHours(e.target.value.replace(/[^\d.]/g, ""))} placeholder="15" />
+          </Field>
+          <Field label="Anything else?" optional>
             <Textarea
               value={comments}
               onChange={(e) => setComments(e.target.value)}
-              placeholder="Anything you'd like to add..."
-              className="bg-[#111] border-[#262626] text-court-white placeholder:text-net-grey focus-visible:ring-hevini-red rounded-[2px] resize-none h-28"
+              maxLength={2000}
+              placeholder="Great spin, a bit stiff on serves…"
             />
-          </div>
+          </Field>
+        </Card>
 
-          <Button
-            type="submit"
-            disabled={isPending}
-            className="w-full h-12 bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] font-bold uppercase border-0"
-            style={{ letterSpacing: "0.1em" }}
-          >
-            {isPending ? (
-              <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> SUBMITTING...</>
-            ) : (
-              "SUBMIT FEEDBACK"
-            )}
+        <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] pt-2 md:bottom-6">
+          <Button type="submit" size="lg" className="w-full" disabled={!hasAny} loading={submit.isPending}>
+            Send feedback
           </Button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function RatingGroup({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number | null;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label className="text-xs font-bold uppercase text-net-grey" style={{ letterSpacing: "0.1em" }}>
-        {label}
-      </Label>
-      <div className="flex gap-2">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => onChange(n)}
-            className={`w-10 h-10 rounded-[2px] text-sm font-bold border transition-colors ${
-              value === n
-                ? "bg-hevini-red border-hevini-red text-white"
-                : "bg-[#111] border-[#333] text-net-grey hover:border-[#555] hover:text-court-white"
-            }`}
-          >
-            {n}
-          </button>
-        ))}
-      </div>
-    </div>
+        </div>
+      </form>
+    </Page>
   );
 }

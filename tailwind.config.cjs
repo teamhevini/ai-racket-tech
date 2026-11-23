@@ -1,74 +1,67 @@
 /** @type {import('tailwindcss').Config} */
+const v = (name) => `rgb(var(--${name}) / <alpha-value>)`;
+
 module.exports = {
-  darkMode: ["class"],
+  darkMode: ["class", '[data-theme="dark"]'],
   content: ["./client/src/**/*.{ts,tsx}", "./client/index.html"],
   theme: {
     extend: {
       colors: {
-        "court-black": "#0A0A0A",
-        "court-white": "#FFFFFF",
-        "hevini-red": "#C8102E",
-        "hevini-red-dark": "#A50D24",
-        "net-grey": "#6B6B6B",
-        chalk: "#F5F5F0",
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
+        // Surfaces
+        bg: v("bg"),
+        surface: v("surface"),
+        "surface-2": v("surface-2"),
+        line: v("line"),
+        // Text
+        ink: v("ink"),
+        muted: v("muted"),
+        faint: v("faint"),
+        // Brand + tennis accents
+        brand: { DEFAULT: v("brand"), ink: v("brand-ink"), soft: v("brand-soft") },
+        grass: { DEFAULT: v("grass"), soft: v("grass-soft") },
+        ball: { DEFAULT: v("ball"), ink: v("ball-ink") },
+        clay: { DEFAULT: v("clay"), soft: v("clay-soft") },
+        hard: { DEFAULT: v("hard"), soft: v("hard-soft") },
+        // shadcn-compatible aliases used by the few Radix primitives we keep
+        border: v("line"),
+        background: v("bg"),
+        foreground: v("ink"),
       },
       fontFamily: {
-        body: ["Inter", "system-ui", "sans-serif"],
-        display: ["Inter", "system-ui", "sans-serif"],
+        sans: ['"Inter Tight"', "Inter", "system-ui", "sans-serif"],
+        display: ['"Instrument Serif"', "Georgia", "serif"],
+        mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
+      },
+      fontSize: {
+        "2xs": ["0.6875rem", { lineHeight: "1rem", letterSpacing: "0.02em" }],
       },
       borderRadius: {
-        lg: "4px",
-        md: "2px",
-        sm: "2px",
+        xl: "1rem",
+        "2xl": "1.25rem",
+        "3xl": "1.75rem",
+      },
+      boxShadow: {
+        card: "0 1px 0 rgb(var(--shadow) / 0.04), 0 8px 24px -12px rgb(var(--shadow) / 0.18)",
+        lift: "0 2px 0 rgb(var(--shadow) / 0.04), 0 18px 40px -18px rgb(var(--shadow) / 0.35)",
+        glow: "0 0 0 4px rgb(var(--brand) / 0.15)",
+      },
+      transitionTimingFunction: {
+        spring: "cubic-bezier(0.22, 1, 0.36, 1)",
       },
       keyframes: {
-        "accordion-down": {
-          from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
+        "fade-up": { from: { opacity: "0", transform: "translateY(8px)" }, to: { opacity: "1", transform: "none" } },
+        shimmer: { from: { backgroundPosition: "-400px 0" }, to: { backgroundPosition: "400px 0" } },
+        bounce: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-14px)" },
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-up": "fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
+        shimmer: "shimmer 1.4s linear infinite",
+        "ball-bounce": "bounce 0.9s cubic-bezier(0.5, 0, 0.5, 1) infinite",
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 };

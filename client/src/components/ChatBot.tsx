@@ -1,260 +1,350 @@
-import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Loader2, Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Link } from "wouter";
-import { useUser } from "@/contexts/UserContext";
-import signatureLogo from "@/assets/Hevini_08_Signature.png";
+import * as React from "react";
+import { Link, useLocation } from "wouter";
+import { AnimatePresence, motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
+import { ArrowUp, Lock, MessageCircle, RotateCcw, X } from "lucide-react";
+import { Button } from "./ui/button";
+import { Mark } from "./Logo";
+import { useMe } from "@/hooks/use-me";
+import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
-interface Message {
+interface ChatMessage {
   role: "user" | "assistant";
   content: string;
-  streaming?: boolean;
+  error?: boolean;
 }
 
+const GREETING: ChatMessage = {
+  role: "assistant",
+  content: "Hi! I'm your AI racket technician. Ask me anything about strings, tension, setups or racket specs.",
+};
+
+const SUGGESTIONS = ["Is 52 lbs too tight for poly?", "Best string for tennis elbow?", "How often should I restring?"];
+
+// Also hidden where a full-width action bar sits at thumb height.
+const HIDDEN_ON = ["/login", "/signup", "/payment-success", "/setup", "/feedback"];
+
+/** Floating AI technician. Club members chat live; everyone else sees what Club unlocks. */
 export function ChatBot() {
-  const { canUseChat, isAdmin, loading } = useUser();
-  const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content:
-        "Hi! I'm your AI Racket Technician. Ask me anything about strings, tension, setups, or racket specs.",
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [conversationId, setConversationId] = useState<number | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [location] = useLocation();
+  const { ent, loading } = useMe();
+  const [open, setOpen] = React.useState(false);
+  const chat = useChat();
+  const fabRef = React.useRef<HTMLButtonElement>(null);
+  const panelRef = React.useRef<HTMLElement>(null);
+  const wasOpen = React.useRef(false);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  // Give focus back to the chat button when the panel closes.
+  React.useEffect(() => {
+    if (wasOpen.current && !open) requestAnimationFrame(() => fabRef.current?.focus());
+    wasOpen.current = open;
+  }, [open]);
 
-  const startConversation = async (): Promise<number> => {
-    if (conversationId) return conversationId;
-    const res = await fetch("/api/conversations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ title: "Chat session" }),
-    });
-    const data = await res.json();
-    setConversationId(data.id);
-    return data.id;
-  };
-
-  const sendMessage = async () => {
-    const text = input.trim();
-    if (!text || isStreaming) return;
-    setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
-    setIsStreaming(true);
-    try {
-      const convId = await startConversation();
-      const response = await fetch(`/api/conversations/${convId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ content: text }),
-      });
-      if (!response.body) throw new Error("No stream");
-      setMessages((prev) => [...prev, { role: "assistant", content: "", streaming: true }]);
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const json = JSON.parse(line.slice(6));
-            if (json.content) {
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                if (last.role === "assistant")
-                  updated[updated.length - 1] = { ...last, content: last.content + json.content };
-                return updated;
-              });
-            }
-            if (json.done) {
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                if (last.role === "assistant")
-                  updated[updated.length - 1] = { ...last, streaming: false };
-                return updated;
-              });
-            }
-          } catch {}
-        }
-      }
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Sorry, something went wrong. Please try again." },
-      ]);
-    } finally {
-      setIsStreaming(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+  // Keep Tab inside the open panel.
+  function trapFocus(e: React.KeyboardEvent) {
+    if (e.key !== "Tab" || !panelRef.current) return;
+    const items = panelRef.current.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
       e.preventDefault();
-      sendMessage();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
     }
-  };
+  }
 
-  if (loading) return null;
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  if (loading || HIDDEN_ON.includes(location)) return null;
 
   return (
     <>
-      <motion.button
-        className="fixed bottom-6 right-6 z-50 rounded-full bg-[#0A0A0A] border border-[#2A2A2A] text-white shadow-2xl shadow-black/50 flex items-center gap-2.5 px-4 py-2.5 hover:border-[#444] transition-colors"
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.97 }}
-        onClick={() => setOpen((o) => !o)}
-        aria-label="Open 10IS Technician chat"
-      >
-        <AnimatePresence mode="wait">
-          {open ? (
-            <motion.span key="x" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.15 }} className="flex items-center gap-2">
-              <X className="w-4 h-4 text-net-grey" />
-              <span className="text-[11px] font-bold uppercase text-net-grey" style={{ letterSpacing: "0.1em" }}>Close</span>
-            </motion.span>
-          ) : (
-            <motion.span key="chat" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.15 }} className="flex items-center gap-2">
-              <img src={signatureLogo} alt="" className="w-5 h-5 object-contain" />
-              <span className="text-[11px] font-bold uppercase text-court-white" style={{ letterSpacing: "0.08em" }}>Chat with 10IS AI</span>
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </motion.button>
+      <AnimatePresence>
+        {!open && (
+          <motion.button
+            key="fab"
+            ref={fabRef}
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.6, opacity: 0 }}
+            whileTap={{ scale: 0.92 }}
+            onClick={() => setOpen(true)}
+            aria-label="Ask the AI racket technician"
+            className={cn(
+              "fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-40 size-12 place-items-center rounded-full bg-ink text-bg shadow-lift md:bottom-6 md:right-6 md:grid md:size-14",
+              // On phones the button only shows for Club members, so it never covers content for everyone else.
+              ent.chat ? "grid" : "hidden",
+            )}
+          >
+            <MessageCircle className="size-5 md:size-6" />
+            <span className="absolute right-1 top-1 size-3 rounded-full bg-ball ring-2 ring-ink" />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {open && (
-          <motion.div
-            key="chat-panel"
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="fixed bottom-24 right-6 z-50 w-[360px] max-w-[calc(100vw-3rem)] bg-[#0F0F0F] border border-[#1E1E1E] rounded-[4px] shadow-2xl shadow-black/40 flex flex-col overflow-hidden"
-            style={{ height: "520px" }}
-          >
-            <div className="px-4 py-3 bg-hevini-red text-white flex items-center gap-3 shrink-0">
-              <img src={signatureLogo} alt="" className="w-6 h-6 object-contain" />
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-[13px] leading-tight uppercase" style={{ letterSpacing: "0.08em" }}>
-                  10IS Technician
-                </div>
-              </div>
-              {(canUseChat || isAdmin) && (
-                <span className="text-[10px] font-bold bg-hevini-red-dark px-2 py-0.5 uppercase" style={{ letterSpacing: "0.1em" }}>
-                  Club
-                </span>
+          <>
+            <motion.div
+              key="scrim"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/50 md:hidden"
+              onClick={() => setOpen(false)}
+            />
+            <motion.section
+              key="panel"
+              ref={panelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="AI racket technician"
+              onKeyDown={trapFocus}
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ type: "spring", bounce: 0.15, duration: 0.45 }}
+              className={cn(
+                "fixed z-50 flex flex-col overflow-hidden bg-surface shadow-lift ring-1 ring-line",
+                "inset-x-0 bottom-0 h-[85dvh] rounded-t-3xl",
+                "md:inset-auto md:bottom-6 md:right-6 md:h-[min(640px,80vh)] md:w-[400px] md:rounded-3xl",
               )}
-            </div>
-
-            {!(canUseChat || isAdmin) ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center bg-[#0F0F0F]">
-                <div className="w-16 h-16 rounded-full bg-hevini-red/10 border border-hevini-red/40 flex items-center justify-center">
-                  <Lock className="w-7 h-7 text-hevini-red" />
-                </div>
-                <div>
-                  <p className="text-hevini-red text-[10px] font-bold uppercase mb-2" style={{ letterSpacing: "0.15em" }}>
-                    Club Feature
-                  </p>
-                  <p className="text-sm text-net-grey leading-relaxed">
-                    Live chat with your 10IS Technician. String advice, injury-safe setups, and tension tuning — all in one conversation.
-                  </p>
-                </div>
-                <Link href="/pricing" className="w-full" onClick={() => setOpen(false)}>
-                  <Button
-                    className="w-full bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] font-bold uppercase border-0"
-                    style={{ letterSpacing: "0.1em" }}
-                  >
-                    Upgrade to Club — $1.99/mo
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <>
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 scroll-smooth bg-[#0F0F0F]">
-                  {messages.map((msg, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[85%] px-3 py-2 text-sm leading-relaxed ${
-                          msg.role === "user"
-                            ? "bg-hevini-red text-white rounded-[4px] rounded-br-none"
-                            : "bg-[#1A1A1A] text-court-white rounded-[4px] rounded-bl-none"
-                        }`}
-                      >
-                        {msg.role === "assistant" ? (
-                          <div className="prose prose-sm prose-invert max-w-none [&_p]:mb-1 [&_p:last-child]:mb-0 [&_ul]:mt-1 [&_ul]:mb-1 [&_ol]:mt-1 [&_ol]:mb-1 [&_li]:mb-0.5 [&_strong]:text-court-white [&_code]:bg-[#111] [&_code]:px-1 [&_code]:rounded [&_code]:text-xs">
-                            <ReactMarkdown>{msg.content}</ReactMarkdown>
-                            {msg.streaming && (
-                              <span className="inline-block w-1.5 h-3.5 bg-current ml-0.5 rounded-sm animate-pulse" />
-                            )}
-                          </div>
-                        ) : (
-                          <>
-                            {msg.content}
-                          </>
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
-                  {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
-                    <div className="flex justify-start">
-                      <div className="bg-[#1A1A1A] rounded-[4px] rounded-bl-none px-3 py-2">
-                        <Loader2 className="w-4 h-4 animate-spin text-net-grey" />
-                      </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-                <div className="p-3 border-t border-[#1E1E1E] shrink-0 bg-[#0F0F0F]">
-                  <div className="flex gap-2">
-                    <Input
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder="Ask about strings, tension, rackets..."
-                      className="flex-1 h-10 text-sm rounded-[2px] bg-[#1A1A1A] border border-[#262626] text-court-white placeholder:text-net-grey focus-visible:ring-1 focus-visible:ring-hevini-red focus-visible:border-hevini-red"
-                      disabled={isStreaming}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-10 w-10 rounded-[2px] bg-hevini-red hover:bg-hevini-red-dark text-white shrink-0 border-0"
-                      onClick={sendMessage}
-                      disabled={!input.trim() || isStreaming}
-                    >
-                      <Send className="w-4 h-4" />
-                    </Button>
+            >
+              <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <span className="grid size-10 place-items-center rounded-full bg-surface-2">
+                    <Mark className="size-6" />
+                  </span>
+                  <div>
+                    <p className="font-semibold leading-tight">Racket technician</p>
+                    <p className="text-xs text-muted">{ent.chat ? "AI · replies in seconds" : "Club members only"}</p>
                   </div>
-                  <p className="text-[10px] text-net-grey text-center mt-2 uppercase" style={{ letterSpacing: "0.1em" }}>
-                    AI advice — consult a pro stringer for final setup
-                  </p>
                 </div>
-              </>
-            )}
-          </motion.div>
+                <Button variant="ghost" size="icon-sm" onClick={() => setOpen(false)} aria-label="Close chat">
+                  <X />
+                </Button>
+              </header>
+              {ent.chat ? <ChatPanel chat={chat} /> : <LockedPanel onNavigate={() => setOpen(false)} />}
+            </motion.section>
+          </>
         )}
       </AnimatePresence>
+    </>
+  );
+}
+
+function LockedPanel({ onNavigate }: { onNavigate: () => void }) {
+  return (
+    <div className="safe-bottom flex flex-1 flex-col items-center justify-center px-8 text-center">
+      <span className="grid size-14 place-items-center rounded-full bg-ball text-ball-ink">
+        <Lock className="size-6" />
+      </span>
+      <h2 className="display mt-5 text-3xl">Talk to a technician, any time.</h2>
+      <p className="mt-3 text-sm leading-relaxed text-muted">
+        Live chat with our AI racket technician is part of 10IS Club — ask about tension, string swaps, arm pain or a frame you're eyeing.
+      </p>
+      <Button asChild className="mt-6" onClick={onNavigate}>
+        <Link href="/pricing">See Club</Link>
+      </Button>
+    </div>
+  );
+}
+
+function useChat() {
+  const [messages, setMessages] = React.useState<ChatMessage[]>([GREETING]);
+  const [streaming, setStreaming] = React.useState(false);
+  const convId = React.useRef<number | null>(null);
+  const abort = React.useRef<AbortController | null>(null);
+
+  // Stop any in-flight reply if the whole chat goes away (e.g. sign-out).
+  React.useEffect(() => () => abort.current?.abort(), []);
+
+  function patchLast(fn: (m: ChatMessage) => ChatMessage) {
+    setMessages((prev) => [...prev.slice(0, -1), fn(prev[prev.length - 1])]);
+  }
+
+  async function send(text: string) {
+    const content = text.trim();
+    if (!content || streaming) return;
+    setMessages((prev) => [...prev, { role: "user", content }, { role: "assistant", content: "" }]);
+    setStreaming(true);
+    const controller = new AbortController();
+    abort.current = controller;
+    try {
+      if (!convId.current) {
+        const conv = await api<{ id: number }>("POST", "/api/conversations", { title: content.slice(0, 60) });
+        convId.current = conv.id;
+      }
+      const res = await fetch(`/api/conversations/${convId.current}/messages`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+        signal: controller.signal,
+      });
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.message ?? "The technician couldn't reply. Please try again.");
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let got = false;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+        for (const evt of events) {
+          const line = evt.trim();
+          if (!line.startsWith("data:")) continue;
+          const data = JSON.parse(line.slice(5));
+          if (data.content) {
+            got = true;
+            patchLast((m) => ({ ...m, content: m.content + data.content }));
+          }
+          if (data.error) throw new Error(data.error);
+        }
+      }
+      // A dropped connection or empty reply must not leave typing dots forever.
+      if (!got) throw new Error("No reply came through — please try again.");
+    } catch (err) {
+      if (controller.signal.aborted) return;
+      patchLast((m) => ({
+        ...m,
+        error: true,
+        content: m.content || (err instanceof Error ? err.message : "Something went wrong."),
+      }));
+    } finally {
+      if (abort.current === controller) abort.current = null;
+      setStreaming(false);
+    }
+  }
+
+  function reset() {
+    abort.current?.abort();
+    convId.current = null;
+    setMessages([GREETING]);
+  }
+
+  return { messages, streaming, send, reset };
+}
+
+type Chat = ReturnType<typeof useChat>;
+
+function ChatPanel({ chat }: { chat: Chat }) {
+  const { messages, streaming, reset } = chat;
+  const [input, setInput] = React.useState("");
+  const endRef = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLTextAreaElement>(null);
+
+  React.useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages]);
+
+  React.useEffect(() => {
+    inputRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  function send(text: string) {
+    if (!text.trim() || streaming) return;
+    setInput("");
+    void chat.send(text);
+  }
+
+  return (
+    <>
+      <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5" aria-live="polite">
+        {messages.map((m, i) => (
+          <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+            <div
+              className={cn(
+                "max-w-[85%] rounded-2xl px-4 py-3 text-[0.9375rem] leading-relaxed",
+                m.role === "user"
+                  ? "rounded-br-md bg-ink text-bg"
+                  : m.error
+                    ? "rounded-bl-md bg-brand-soft text-brand"
+                    : "rounded-bl-md bg-surface-2 text-ink",
+              )}
+            >
+              {m.role === "assistant" && !m.content ? (
+                <span className="flex gap-1 py-1" aria-label="Typing">
+                  {[0, 1, 2].map((d) => (
+                    <span key={d} className="size-1.5 animate-bounce rounded-full bg-muted" style={{ animationDelay: `${d * 120}ms` }} />
+                  ))}
+                </span>
+              ) : m.role === "assistant" ? (
+                <div className="prose prose-sm max-w-none text-inherit prose-p:my-1.5 prose-p:text-inherit prose-ul:my-1.5 prose-li:my-0.5 prose-li:text-inherit prose-strong:text-inherit">
+                  <ReactMarkdown>{m.content}</ReactMarkdown>
+                </div>
+              ) : (
+                m.content
+              )}
+            </div>
+          </div>
+        ))}
+        {messages.length === 1 && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => send(s)}
+                className="rounded-full border border-line px-3 py-2 text-sm text-muted transition-colors hover:border-ink/30 hover:text-ink"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+
+      <form
+        className="safe-bottom border-t border-line px-3 pt-3 [&>*]:mb-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          send(input);
+        }}
+      >
+        <div className="flex items-end gap-2">
+          {messages.length > 1 && (
+            <Button type="button" variant="ghost" size="icon" onClick={reset} aria-label="New conversation" disabled={streaming}>
+              <RotateCcw />
+            </Button>
+          )}
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send(input);
+              }
+            }}
+            rows={1}
+            maxLength={4000}
+            placeholder="Ask about strings, tension…"
+            aria-label="Message"
+            className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-line bg-bg px-4 py-2.5 text-ink placeholder:text-faint focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/10"
+          />
+          <Button type="submit" size="icon" disabled={!input.trim()} loading={streaming} aria-label="Send">
+            {!streaming && <ArrowUp />}
+          </Button>
+        </div>
+      </form>
     </>
   );
 }

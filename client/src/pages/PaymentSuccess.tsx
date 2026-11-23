@@ -1,117 +1,75 @@
-import { useEffect, useState } from "react";
-import { Link, useLocation } from "wouter";
-import { CheckCircle, Loader2, XCircle } from "lucide-react";
+import * as React from "react";
+import { Link, useSearch } from "wouter";
+import { motion } from "framer-motion";
+import { Check, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
+import type { Me } from "@/lib/types";
+import { useRefreshMe } from "@/hooks/use-me";
+import { PLANS } from "@shared/tiers";
 
-type Status = "loading" | "success" | "error";
+type State = { status: "loading" } | { status: "ok"; tier: "pro" | "club" } | { status: "error"; message: string };
 
 export default function PaymentSuccess() {
-  const [status, setStatus] = useState<Status>("loading");
-  const [tier, setTier] = useState<string | null>(null);
+  const search = useSearch();
+  const refreshMe = useRefreshMe();
+  const [state, setState] = React.useState<State>({ status: "loading" });
+  const ran = React.useRef(false);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sessionId = params.get("session_id");
-    const tierParam = params.get("tier");
-
-    if (!sessionId) {
-      setStatus("error");
-      return;
-    }
-
-    fetch("/api/checkout/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionId }),
-      credentials: "include",
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
+  React.useEffect(() => {
+    if (ran.current) return;
+    ran.current = true;
+    const sessionId = new URLSearchParams(search).get("session_id");
+    if (!sessionId) return setState({ status: "error", message: "We couldn't find your payment details." });
+    api<{ tier: "pro" | "club"; user: Me }>("POST", "/api/checkout/verify", { session_id: sessionId })
+      .then(async (res) => {
+        await refreshMe(res.user);
+        setState({ status: "ok", tier: res.tier });
       })
-      .then((data) => {
-        setTier(data.tier || tierParam);
-        setStatus("success");
-      })
-      .catch(() => setStatus("error"));
-  }, []);
-
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen bg-court-black flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-8 h-8 animate-spin text-hevini-red mx-auto" />
-          <p className="text-net-grey text-sm">Confirming your payment...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (status === "error") {
-    return (
-      <div className="min-h-screen bg-court-black flex items-center justify-center px-4">
-        <div className="text-center space-y-6 max-w-sm">
-          <XCircle className="w-12 h-12 text-hevini-red mx-auto" />
-          <div>
-            <p
-              className="text-hevini-red text-[10px] font-bold uppercase mb-3"
-              style={{ letterSpacing: "0.15em" }}
-            >
-              Payment Error
-            </p>
-            <h2 className="text-court-white font-display font-bold text-2xl mb-2">
-              Could not confirm payment
-            </h2>
-            <p className="text-net-grey text-sm">
-              If you were charged, contact us at contact@hevini.com and we'll sort it out.
-            </p>
-          </div>
-          <Link href="/pricing">
-            <Button
-              className="bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] font-bold uppercase border-0 h-11 px-8"
-              style={{ letterSpacing: "0.1em" }}
-            >
-              TRY AGAIN
-            </Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const tierLabel = tier === "club" ? "10IS Club" : "10IS Pro";
-  const tierDesc =
-    tier === "club"
-      ? "You now have unlimited recommendations, full stringer results, AI chat, and multi-profile support."
-      : "You now have unlimited recommendations, full stringer results, shareable setups, and more.";
+      .catch((err) => setState({ status: "error", message: err instanceof Error ? err.message : "Verification failed." }));
+  }, [search, refreshMe]);
 
   return (
-    <div className="min-h-screen bg-court-black flex items-center justify-center px-4">
-      <div className="text-center space-y-6 max-w-sm">
-        <div className="w-16 h-16 rounded-full bg-hevini-red/10 border border-hevini-red/40 flex items-center justify-center mx-auto">
-          <CheckCircle className="w-7 h-7 text-hevini-red" />
-        </div>
-        <div>
-          <p
-            className="text-hevini-red text-[10px] font-bold uppercase mb-3"
-            style={{ letterSpacing: "0.15em" }}
+    <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
+      {state.status === "loading" && (
+        <>
+          <span className="size-8 animate-ball-bounce rounded-full bg-ball" aria-hidden />
+          <p className="mt-6 text-muted" role="status">Confirming your payment…</p>
+        </>
+      )}
+      {state.status === "error" && (
+        <>
+          <XCircle className="size-12 text-brand" aria-hidden />
+          <h1 className="display mt-6 text-4xl">Something didn't land</h1>
+          <p className="mt-3 text-muted">{state.message} If you were charged, your plan will still activate within a few minutes — or contact us and we'll sort it.</p>
+          <div className="mt-8 flex gap-3">
+            <Button asChild variant="secondary"><Link href="/account?tab=plan">Check my plan</Link></Button>
+            <Button asChild><Link href="/pricing">Back to pricing</Link></Button>
+          </div>
+        </>
+      )}
+      {state.status === "ok" && (
+        <>
+          <motion.div
+            initial={{ scale: 0.4, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", bounce: 0.5, duration: 0.8 }}
+            className="grid size-20 place-items-center rounded-full bg-ball text-ball-ink shadow-[0_20px_40px_-16px_rgb(var(--ball))]"
           >
-            Welcome to {tierLabel}
-          </p>
-          <h2 className="text-court-white font-display font-bold text-2xl mb-2">
-            You're all set.
-          </h2>
-          <p className="text-net-grey text-sm leading-relaxed">{tierDesc}</p>
-        </div>
-        <Link href="/onboarding">
-          <Button
-            className="w-full bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] font-bold uppercase border-0 h-12"
-            style={{ letterSpacing: "0.1em" }}
-          >
-            GET MY FIRST SETUP
+            <Check className="size-9" strokeWidth={3} />
+          </motion.div>
+          <p className="eyebrow mt-8">Game, set, upgraded</p>
+          <h1 className="display mt-2 text-5xl">Welcome to {PLANS[state.tier].name}</h1>
+          <ul className="mt-6 space-y-2 text-left text-sm">
+            {PLANS[state.tier].features.map((f) => (
+              <li key={f} className="flex gap-2"><Check className="mt-0.5 size-4 text-grass" />{f}</li>
+            ))}
+          </ul>
+          <Button asChild size="lg" className="mt-10 w-full">
+            <Link href="/bag">Open my bag</Link>
           </Button>
-        </Link>
-      </div>
+        </>
+      )}
     </div>
   );
 }

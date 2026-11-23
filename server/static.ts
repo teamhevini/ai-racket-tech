@@ -5,16 +5,14 @@ import fs from "fs";
 
 export function serveStatic(app: Express): void {
   const distPath = path.resolve(process.cwd(), "dist/public");
-
   if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Build directory not found: ${distPath}. Run npm run build first.`
-    );
+    throw new Error(`Build directory not found: ${distPath}. Run npm run build first.`);
   }
-
-  app.use(express.static(distPath));
-
+  // Hashed assets can be cached forever; index.html must always be fresh.
+  app.use("/assets", express.static(path.join(distPath, "assets"), { immutable: true, maxAge: "1y" }));
+  app.use(express.static(distPath, { index: false }));
   app.use("*", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache");
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
