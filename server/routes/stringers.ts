@@ -18,6 +18,75 @@ interface PlaceResult {
   openNow?: boolean;
 }
 
+class PlacesNotEnabled extends Error {}
+
+/**
+ * Places API (New) — the only Places API Google lets new projects enable.
+ * https://developers.google.com/maps/documentation/places/web-service/text-search
+ */
+async function searchPlacesNew(apiKey: string, text: string, near: { lat: number; lng: number } | null): Promise<PlaceResult[]> {
+  const r = await fetch("https://places.googleapis.com/v1/places:searchText", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask":
+        "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.rating,places.userRatingCount,places.currentOpeningHours.openNow",
+    },
+    body: JSON.stringify({
+      textQuery: text,
+      pageSize: 20,
+      ...(near ? { locationBias: { circle: { center: { latitude: near.lat, longitude: near.lng }, radius: 25000 } } } : {}),
+    }),
+  });
+  const data: any = await r.json().catch(() => ({}));
+  if (r.status === 403 || data?.error?.status === "PERMISSION_DENIED") throw new PlacesNotEnabled(data?.error?.message ?? "403");
+  if (!r.ok) throw new Error(`Places (New) ${r.status}: ${data?.error?.message ?? ""}`);
+  return (data.places ?? []).map((p: any) => ({
+    name: p.displayName?.text ?? "Stringer",
+    address: p.formattedAddress ?? "",
+    place_id: p.id,
+    geometry: p.location ? { location: { lat: p.location.latitude, lng: p.location.longitude } } : undefined,
+    types: p.types ?? [],
+    rating: p.rating,
+    ratingCount: p.userRatingCount,
+    openNow: p.currentOpeningHours?.openNow,
+  }));
+}
+
+/** Legacy Places Text Search — still used by keys created before Google retired it for new projects. */
+async function searchPlacesLegacy(apiKey: string, text: string, near: { lat: number; lng: number } | null): Promise<PlaceResult[]> {
+  const params = new URLSearchParams({ key: apiKey, query: text });
+  if (near) {
+    params.set("location", `${near.lat},${near.lng}`);
+    params.set("radius", "25000");
+  }
+  const r = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?${params}`);
+  if (!r.ok || !(r.headers.get("content-type") ?? "").includes("json")) throw new Error(`Places ${r.status}`);
+  const data: any = await r.json();
+  if (data.status !== "OK" && data.status !== "ZERO_RESULTS") throw new Error(`Places ${data.status}: ${data.error_message ?? ""}`);
+  return (data.results ?? []).map((p: any) => ({
+    name: p.name,
+    address: p.formatted_address ?? "",
+    place_id: p.place_id,
+    geometry: p.geometry?.location ? { location: p.geometry.location } : undefined,
+    types: p.types ?? [],
+    rating: p.rating,
+    ratingCount: p.user_ratings_total,
+    openNow: p.opening_hours?.open_now,
+  }));
+}
+
+/** Try Places API (New); if this key's project only has the legacy API enabled, fall back to it. */
+export async function searchPlaces(apiKey: string, text: string, near: { lat: number; lng: number } | null) {
+  try {
+    return await searchPlacesNew(apiKey, text, near);
+  } catch (err) {
+    if (!(err instanceof PlacesNotEnabled)) throw err;
+    return searchPlacesLegacy(apiKey, text, near);
+  }
+}
+
 /** Search Google Places for stringers. Free accounts get the top few; paid see all. */
 stringersRouter.get(
   "/api/stringers/search",
@@ -29,43 +98,19 @@ stringersRouter.get(
       return res.status(503).json({ message: "Stringer search isn't configured yet.", results: [], total: 0 });
     }
 
-    const params = new URLSearchParams({ key: apiKey });
     const latN = Number(lat);
     const lngN = Number(lng);
-    if (lat && lng && Number.isFinite(latN) && Number.isFinite(lngN)) {
-      params.set("query", "tennis racket stringing");
-      params.set("location", `${latN},${lngN}`);
-      params.set("radius", "25000");
-    } else if (query && query.trim()) {
-      params.set("query", `tennis racket stringing near ${query.trim().slice(0, 120)}`);
-    } else {
-      return res.json({ results: [], total: 0, limited: false });
-    }
+    const near = lat && lng && Number.isFinite(latN) && Number.isFinite(lngN) ? { lat: latN, lng: lngN } : null;
+    const text = near ? "tennis racket stringing" : query?.trim() ? `tennis racket stringing near ${query.trim().slice(0, 120)}` : null;
+    if (!text) return res.json({ results: [], total: 0, limited: false });
 
-    let data: any;
+    let all: PlaceResult[];
     try {
-      const r = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?${params}`);
-      if (!r.ok || !(r.headers.get("content-type") ?? "").includes("json")) throw new Error(`Places ${r.status}`);
-      data = await r.json();
+      all = await searchPlaces(apiKey, text, near);
     } catch (err) {
       console.error("[stringers] search failed:", err);
       return res.status(502).json({ message: "Stringer search is unavailable right now.", results: [], total: 0 });
     }
-    if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
-      console.error("[stringers] Places error:", data.status, data.error_message);
-      return res.status(502).json({ message: "Stringer search is unavailable right now.", results: [], total: 0 });
-    }
-
-    const all: PlaceResult[] = (data.results ?? []).map((p: any) => ({
-      name: p.name,
-      address: p.formatted_address ?? "",
-      place_id: p.place_id,
-      geometry: p.geometry?.location ? { location: p.geometry.location } : undefined,
-      types: p.types ?? [],
-      rating: p.rating,
-      ratingCount: p.user_ratings_total,
-      openNow: p.opening_hours?.open_now,
-    }));
 
     const user = await loadUser(req);
     const unlimited = !!req.entitlements?.allStringers;
