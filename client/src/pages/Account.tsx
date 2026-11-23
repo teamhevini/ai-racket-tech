@@ -304,15 +304,13 @@ function HistoryTab() {
           <li key={r.id}>
             <Card className="flex items-center gap-3 p-4">
               <Link href={`/recommendation/${r.id}`} className="min-w-0 flex-1">
-                <p className="truncate font-medium">
-                  {mains?.exampleStrings?.[0] ?? mains?.stringFamily ?? "Setup"}
-                  {mains?.tension && <span className="font-mono text-muted"> · {mains.tension} lbs</span>}
-                </p>
+                <p className="truncate font-medium">{mains?.exampleStrings?.[0] ?? mains?.stringFamily ?? "Setup"}</p>
                 <p className="truncate text-xs text-muted">
+                  {mains?.tension && <span className="font-mono tabular text-ink">{mains.tension} lbs · </span>}
                   {r.racketLabel ?? "Racket not specified"} · {formatDate(r.createdAt)}
                 </p>
               </Link>
-              <Badge tone={r.confidence === "high" ? "grass" : r.confidence === "medium" ? "clay" : "neutral"}>{r.confidence}</Badge>
+              <Badge tone={r.confidence === "high" ? "grass" : r.confidence === "medium" ? "clay" : "neutral"} className="capitalize">{r.confidence}</Badge>
               <Button variant="ghost" size="icon-sm" aria-label="Remove from history" onClick={() => del.mutate(r.id)}>
                 <Trash2 />
               </Button>
@@ -401,9 +399,15 @@ export default function Account() {
     if (!loading && !signedIn) navigate("/login?next=/account", { replace: true });
   }, [loading, signedIn, navigate]);
 
+  // Keep the active tab visible (deep links like ?tab=history land on it). Scroll only the
+  // tab strip horizontally so the page itself doesn't jump.
+  const profileReady = !!profile.data;
   React.useEffect(() => {
-    tabRefs.current[tab]?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
-  }, [tab]);
+    const el = tabRefs.current[tab];
+    const strip = el?.parentElement;
+    if (!el || !strip) return;
+    strip.scrollTo({ left: el.offsetLeft - strip.clientWidth / 2 + el.clientWidth / 2, behavior: "smooth" });
+  }, [tab, profileReady]);
 
   const setTab = (id: TabId) => navigate(`/account?tab=${id}`, { replace: true });
 

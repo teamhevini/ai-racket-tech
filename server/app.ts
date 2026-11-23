@@ -117,10 +117,14 @@ export async function createApp(opts: { seed?: boolean } = {}) {
 
   // v1 re-threw here after responding, which crashed the whole server on any error.
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
+    // Errors thrown by the Stripe SDK carry Stripe's HTTP status; to the player they are a 502.
+    const fromStripe = typeof err.type === "string" && err.type.startsWith("Stripe");
+    const status = fromStripe ? 502 : err.status || err.statusCode || 500;
     if (status >= 500) console.error(err);
     if (res.headersSent) return;
-    res.status(status).json({ message: status >= 500 ? "Something went wrong on our side. Please try again." : err.message });
+    // Only messages we wrote on purpose reach the player; unexpected errors stay generic.
+    const safe = status < 500 || err.expose;
+    res.status(status).json({ message: safe ? err.message : "Something went wrong on our side. Please try again." });
   });
 
   return app;

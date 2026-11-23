@@ -144,11 +144,20 @@ export default function RacketDetail() {
         </div>
 
         {latest && (
-          <div className="relative mt-6 grid grid-cols-3 gap-4 border-t border-line pt-5">
-            <Stat label="Strings" value={setupLabel(latest.mains, latest.crosses) ?? "—"} />
-            <Stat label="Tension" value={tensionLabel(latest.tensionMains, latest.tensionCrosses) ?? "—"} />
-            <Stat label="Strung" value={formatDate(latest.strungAt)} />
-          </div>
+          <dl className="relative mt-6 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-line pt-5">
+            <div className="col-span-2 min-w-0">
+              <dt className="text-xs text-muted">Strings</dt>
+              <dd className="mt-0.5 text-[0.9375rem] font-medium">{setupLabel(latest.mains, latest.crosses) ?? "Not recorded"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted">Tension</dt>
+              <dd className="mt-0.5 font-mono text-[0.9375rem] font-semibold tabular">{tensionLabel(latest.tensionMains, latest.tensionCrosses) ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted">Strung</dt>
+              <dd className="mt-0.5 text-[0.9375rem] font-medium">{formatDate(latest.strungAt)}</dd>
+            </div>
+          </dl>
         )}
 
         <div className="relative mt-6 grid grid-cols-2 gap-2 sm:flex">
@@ -163,7 +172,7 @@ export default function RacketDetail() {
           {r.dueAt ? (
             <Button asChild variant="secondary" size="lg">
               <a href={`/api/bag/rackets/${racket.id}/reminder.ics`} download>
-                <CalendarPlus /> Add to calendar
+                <CalendarPlus /> Calendar
               </a>
             </Button>
           ) : (
@@ -281,7 +290,7 @@ export default function RacketDetail() {
                     <span className="font-mono tabular">{rec.output.setup.mains.tension} lbs</span> · {formatDate(rec.createdAt)}
                   </p>
                 </div>
-                <Badge tone={rec.confidence === "high" ? "grass" : rec.confidence === "medium" ? "clay" : "neutral"}>{rec.confidence}</Badge>
+                <Badge tone={rec.confidence === "high" ? "grass" : rec.confidence === "medium" ? "clay" : "neutral"} className="capitalize">{rec.confidence}</Badge>
               </Link>
             ))}
           </div>

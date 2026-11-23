@@ -51,9 +51,13 @@ export function ChatBot() {
             whileTap={{ scale: 0.92 }}
             onClick={() => setOpen(true)}
             aria-label="Ask the AI racket technician"
-            className="fixed bottom-24 right-4 z-40 grid size-14 place-items-center rounded-full bg-ink text-bg shadow-lift md:bottom-6 md:right-6"
+            className={cn(
+              "fixed bottom-24 right-4 z-40 size-12 place-items-center rounded-full bg-ink text-bg shadow-lift md:bottom-6 md:right-6 md:grid md:size-14",
+              // On phones the button only shows for Club members, so it never covers content for everyone else.
+              ent.chat ? "grid" : "hidden",
+            )}
           >
-            <MessageCircle className="size-6" />
+            <MessageCircle className="size-5 md:size-6" />
             <span className="absolute right-1 top-1 size-3 rounded-full bg-ball ring-2 ring-ink" />
           </motion.button>
         )}
@@ -67,7 +71,7 @@ export function ChatBot() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-ink/30 md:hidden"
+              className="fixed inset-0 z-50 bg-black/50 md:hidden"
               onClick={() => setOpen(false)}
             />
             <motion.section

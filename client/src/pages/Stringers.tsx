@@ -291,16 +291,11 @@ function PlaceCard({ place, saved, onSave }: { place: PlaceResult; saved: boolea
             <span>{place.address}</span>
           </p>
         </div>
-        <Button
-          variant={saved ? "ghost" : "secondary"}
-          size="icon-sm"
-          onClick={onSave}
-          disabled={saved}
-          aria-label={saved ? `${place.name} is saved` : `Save ${place.name}`}
-          className={saved ? "text-grass" : undefined}
-        >
-          {saved ? <BookmarkCheck /> : <Bookmark />}
-        </Button>
+        {saved && (
+          <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-grass">
+            <BookmarkCheck className="size-4" aria-hidden /> Saved
+          </span>
+        )}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {place.rating != null && (

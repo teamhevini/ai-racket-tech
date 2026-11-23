@@ -12,7 +12,7 @@ export const billingRouter = Router();
 let _stripe: Stripe | null = null;
 export function getStripe(): Stripe {
   if (_stripe) return _stripe;
-  if (!process.env.STRIPE_SECRET_KEY) throw Object.assign(new Error("Payments aren't configured yet."), { status: 503 });
+  if (!process.env.STRIPE_SECRET_KEY) throw Object.assign(new Error("Payments aren't configured yet."), { status: 503, expose: true });
   if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   return _stripe;
 }

@@ -38,7 +38,7 @@ export function Sheet({ open, onOpenChange, title, description, children, footer
     return (
       <Dialog.Root open={open} onOpenChange={onOpenChange}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
           <Dialog.Content
             className={cn(
               "fixed left-1/2 top-1/2 z-50 flex max-h-[min(88vh,760px)] w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-3xl bg-surface shadow-lift ring-1 ring-line data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=open]:duration-300",
@@ -71,7 +71,7 @@ export function Sheet({ open, onOpenChange, title, description, children, footer
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false}>
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-50 bg-ink/35" />
+        <Drawer.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <Drawer.Content
           className={cn(
             "fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col rounded-t-3xl bg-surface shadow-lift outline-none",

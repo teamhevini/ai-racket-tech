@@ -20,7 +20,7 @@ type Setup = RecommendationOutput["setup"]["mains"];
 
 const CONFIDENCE: Record<string, { label: string; tone: "grass" | "clay" | "neutral"; body: string }> = {
   high: { label: "High confidence", tone: "grass", body: "Built from your exact frame specs and full player profile." },
-  medium: { label: "Good confidence", tone: "clay", body: "Based on your frame — add your level and current strings for a sharper result." },
+  medium: { label: "Good confidence", tone: "clay", body: "Tuned to your frame and game. Tell us your current strings next time for an even sharper result." },
   estimated: { label: "Estimated", tone: "neutral", body: "We didn't have your racket's specs, so this is a well-reasoned estimate." },
 };
 
@@ -152,9 +152,9 @@ export default function RecommendationPage() {
       <div className="mb-10 grid gap-2 sm:grid-cols-2">
         <Button size="lg" onClick={signedIn ? startLog : undefined} asChild={!signedIn} className="sm:col-span-2">
           {signedIn ? (
-            <span>
+            <>
               <Briefcase /> Log this setup to a racket
-            </span>
+            </>
           ) : (
             <Link href="/signup">
               <Briefcase /> Save it to my bag — join free

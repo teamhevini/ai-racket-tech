@@ -228,6 +228,7 @@ export default function Setup() {
         <div className="h-1.5 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuemin={1} aria-valuemax={STEPS.length} aria-valuenow={step + 1}>
           <motion.div
             className="h-full rounded-full bg-brand"
+            initial={{ width: 0 }}
             animate={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           />
