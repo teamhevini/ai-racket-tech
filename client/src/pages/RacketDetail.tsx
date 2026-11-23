@@ -134,7 +134,7 @@ export default function RacketDetail() {
         <div className="relative flex items-center gap-5">
           <FreshnessRing reminder={r} size={104} stroke={9} />
           <div className="min-w-0">
-            <h1 className="display truncate text-4xl leading-none sm:text-5xl">{racket.nickname}</h1>
+            <h1 className="display line-clamp-2 break-words text-4xl leading-[0.95] sm:text-5xl">{racket.nickname}</h1>
             {racketName(racket) && <p className="mt-1.5 truncate text-sm text-muted">{racketName(racket)}</p>}
             <div className="mt-3 flex flex-wrap gap-2">
               {racket.reminderEnabled ? <Badge tone={statusTone(r.status)}>{statusText(r)}</Badge> : <Badge>Reminders paused</Badge>}
