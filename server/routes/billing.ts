@@ -151,7 +151,7 @@ billingRouter.post(
     if (!user.stripeCustomerId) return res.status(400).json({ message: "No billing history yet." });
     const portal = await getStripe().billingPortal.sessions.create({
       customer: user.stripeCustomerId,
-      return_url: `${appUrl(req)}/account?tab=billing`,
+      return_url: `${appUrl(req)}/account?tab=plan`,
     });
     res.json({ url: portal.url });
   }),

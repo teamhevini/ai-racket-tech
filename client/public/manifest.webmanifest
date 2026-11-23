@@ -1,0 +1,12 @@
+{
+  "name": "10IS — Your racket, dialled in",
+  "short_name": "10IS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F6F4EE",
+  "theme_color": "#C8102E",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/Hevini_02_Inverted.png", "sizes": "1080x1080", "type": "image/png", "purpose": "any" }
+  ]
+}

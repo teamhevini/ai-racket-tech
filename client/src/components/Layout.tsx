@@ -1,312 +1,215 @@
+import * as React from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, Zap } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { ChatBot } from "@/components/ChatBot";
-import { WelcomeModal } from "@/components/WelcomeModal";
-import { useUser } from "@/contexts/UserContext";
-import signatureLogo from "@/assets/Hevini_08_Signature.png";
+import { AnimatePresence, motion } from "framer-motion";
+import { Briefcase, Home, MapPin, Moon, Sparkles, Sun, UserRound, Library, LogIn } from "lucide-react";
+import { Logo } from "./Logo";
+import { Button } from "./ui/button";
+import { useMe } from "@/hooks/use-me";
+import { useTheme } from "@/hooks/use-theme";
+import { useBag } from "@/hooks/use-bag";
+import { cn } from "@/lib/utils";
+import { SUPPORT_EMAIL } from "@shared/contact";
+
+type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; match?: (p: string) => boolean };
+
+function useNav(signedIn: boolean): NavItem[] {
+  return signedIn
+    ? [
+        { href: "/", label: "Home", icon: Home, match: (p) => p === "/" },
+        { href: "/bag", label: "My bag", icon: Briefcase, match: (p) => p.startsWith("/bag") },
+        { href: "/setup", label: "Setup", icon: Sparkles, match: (p) => p.startsWith("/setup") || p.startsWith("/onboarding") || p.startsWith("/recommendation") },
+        { href: "/stringers", label: "Stringers", icon: MapPin, match: (p) => p.startsWith("/stringers") },
+        { href: "/account", label: "Account", icon: UserRound, match: (p) => p.startsWith("/account") || p.startsWith("/pricing") },
+      ]
+    : [
+        { href: "/", label: "Home", icon: Home, match: (p) => p === "/" },
+        { href: "/setup", label: "Setup", icon: Sparkles, match: (p) => p.startsWith("/setup") || p.startsWith("/onboarding") || p.startsWith("/recommendation") },
+        { href: "/stringers", label: "Stringers", icon: MapPin, match: (p) => p.startsWith("/stringers") },
+        { href: "/rackets", label: "Rackets", icon: Library, match: (p) => p.startsWith("/rackets") },
+        { href: "/login", label: "Log in", icon: LogIn, match: (p) => p === "/login" || p === "/signup" },
+      ];
+}
+
+function ThemeToggle() {
+  const { theme, toggle } = useTheme();
+  return (
+    <Button variant="ghost" size="icon-sm" onClick={toggle} aria-label={theme === "dark" ? "Switch to day mode" : "Switch to night mode"}>
+      {theme === "dark" ? <Sun /> : <Moon />}
+    </Button>
+  );
+}
+
+function DueDot() {
+  const { signedIn } = useMe();
+  const bag = useBag(signedIn);
+  const due = bag.data?.rackets.filter((r) => r.reminder.status === "overdue" || r.reminder.status === "due-soon").length ?? 0;
+  if (!due) return null;
+  return (
+    <span className="absolute -right-1 -top-1 grid min-w-[1.1rem] place-items-center rounded-full bg-brand px-1 text-[0.625rem] font-bold leading-[1.1rem] text-brand-ink">
+      {due}
+    </span>
+  );
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isPro, isAdmin, loading, email, firstName, refetch } = useUser();
-  const showUpgrade = !loading && !isPro && !isAdmin;
-  const isLoggedIn = !loading && !!email;
+  const { signedIn, me, loading } = useMe();
+  const nav = useNav(signedIn);
 
-  async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    refetch();
-  }
+  React.useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [location]);
 
-  const navItems = [
-    { label: "RACKETS", path: "/rackets" },
-    { label: "STRINGERS", path: "/stringers" },
-    { label: "SETUP", path: "/onboarding" },
-    { label: "PRICING", path: "/pricing" },
-    { label: "ABOUT", path: "/about" },
-  ];
+  const desktopLinks = signedIn
+    ? [...nav.filter((n) => n.href !== "/account"), { href: "/rackets", label: "Rackets", icon: Library, match: (p: string) => p.startsWith("/rackets") }]
+    : [
+        { href: "/setup", label: "Get a setup", icon: Sparkles, match: (p: string) => p.startsWith("/setup") },
+        { href: "/stringers", label: "Stringers", icon: MapPin, match: (p: string) => p.startsWith("/stringers") },
+        { href: "/rackets", label: "Rackets", icon: Library, match: (p: string) => p.startsWith("/rackets") },
+        { href: "/pricing", label: "Pricing", icon: Library, match: (p: string) => p.startsWith("/pricing") },
+      ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-court-black font-body text-foreground">
-      <header className="sticky top-0 z-50 w-full bg-court-black border-b border-[#1A1A1A]">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
-            <img
-              src={signatureLogo}
-              alt="10IS — Powered by Hevini Sporting"
-              className="h-10 w-10 shrink-0 object-contain"
-            />
-            <div className="leading-tight hidden sm:block">
-              <div
-                className="text-court-white font-display font-black text-xl"
-                style={{ letterSpacing: "0.12em" }}
-              >
-                10IS
-              </div>
-              <div
-                className="text-net-grey text-[10px] font-normal"
-                style={{ letterSpacing: "0.05em" }}
-              >
-                Powered by Hevini Sporting
-              </div>
-            </div>
+    <div className="flex min-h-dvh flex-col">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-bg">
+        Skip to content
+      </a>
+
+      <header className="sticky top-0 z-40 border-b border-line/60 bg-bg/80 backdrop-blur-xl supports-[backdrop-filter]:bg-bg/70">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+          <Link href="/" aria-label="10IS home" className="rounded-lg">
+            <Logo />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-6">
-            {/* Primary nav links */}
-            {navItems.map((item) => {
-              const active = location === item.path;
+          <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
+            {desktopLinks.map((n) => {
+              const active = n.match ? n.match(location) : location === n.href;
               return (
                 <Link
-                  key={item.path}
-                  href={item.path}
-                  className={`text-xs font-bold transition-colors ${
-                    active ? "text-court-white" : "text-net-grey hover:text-court-white"
-                  }`}
-                  style={{ letterSpacing: "0.08em" }}
+                  key={n.href}
+                  href={n.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "relative rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                    active ? "text-ink" : "text-muted hover:text-ink",
+                  )}
                 >
-                  {item.label}
+                  {active && (
+                    <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-full bg-surface shadow-card ring-1 ring-line" transition={{ type: "spring", bounce: 0.2, duration: 0.5 }} />
+                  )}
+                  <span className="relative">
+                    {n.label}
+                    {n.href === "/bag" && <DueDot />}
+                  </span>
                 </Link>
               );
             })}
-
-            {/* Separator */}
-            <div className="w-px h-4 bg-[#2A2A2A] shrink-0" />
-
-            {/* Account section */}
-            {showUpgrade && (
-              <Link href="/pricing">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-9 px-4 rounded-[2px] text-xs font-bold uppercase border-hevini-red text-hevini-red hover:bg-hevini-red hover:text-white transition-colors"
-                  style={{ letterSpacing: "0.1em" }}
-                >
-                  <Zap className="w-3 h-3 mr-1.5" />
-                  UPGRADE
-                </Button>
-              </Link>
-            )}
-            {!loading && (isLoggedIn ? (
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] text-net-grey max-w-[120px] truncate">{firstName ?? email}</span>
-                <Link href="/account">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-9 px-4 rounded-[2px] text-xs font-bold uppercase border-[#333] text-net-grey hover:border-court-white hover:text-court-white transition-colors"
-                    style={{ letterSpacing: "0.1em" }}
-                  >
-                    ACCOUNT
-                  </Button>
-                </Link>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleLogout}
-                  className="h-9 px-4 rounded-[2px] text-xs font-bold uppercase border-[#333] text-net-grey hover:border-court-white hover:text-court-white transition-colors"
-                  style={{ letterSpacing: "0.1em" }}
-                >
-                  LOGOUT
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link href="/login">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-9 px-4 rounded-[2px] text-xs font-bold uppercase border-[#333] text-net-grey hover:border-court-white hover:text-court-white transition-colors"
-                    style={{ letterSpacing: "0.1em" }}
-                  >
-                    LOGIN
-                  </Button>
-                </Link>
-                <Link href="/signup">
-                  <Button
-                    size="sm"
-                    className="h-9 px-5 bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] text-xs font-bold uppercase border-0"
-                    style={{ letterSpacing: "0.1em" }}
-                  >
-                    SIGN UP
-                  </Button>
-                </Link>
-              </div>
-            ))}
           </nav>
 
-          <button
-            className="md:hidden p-2 text-court-white"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? <X /> : <Menu />}
-          </button>
-        </div>
-
-        {mobileMenuOpen && (
-          <div className="md:hidden absolute top-16 left-0 w-full bg-court-black border-b border-[#1A1A1A] py-4 px-4 flex flex-col gap-1 z-40">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                href={item.path}
-                className="px-2 py-3 text-court-white font-bold text-base"
-                style={{ letterSpacing: "0.08em" }}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {item.label}
-              </Link>
-            ))}
-            {isLoggedIn && (
+          <div className="flex items-center gap-1.5">
+            <ThemeToggle />
+            {loading ? (
+              <div className="h-9 w-20" />
+            ) : signedIn ? (
               <Link
                 href="/account"
-                className="px-2 py-3 text-court-white font-bold text-base"
-                style={{ letterSpacing: "0.08em" }}
-                onClick={() => setMobileMenuOpen(false)}
+                className="grid size-9 place-items-center rounded-full bg-ink text-sm font-semibold text-bg transition-transform active:scale-95"
+                aria-label="Account"
               >
-                ACCOUNT
+                {(me.firstName?.[0] ?? me.email?.[0] ?? "?").toUpperCase()}
               </Link>
-            )}
-            {showUpgrade && (
-              <Link href="/pricing" onClick={() => setMobileMenuOpen(false)}>
-                <Button
-                  variant="outline"
-                  className="w-full mt-2 rounded-[2px] border-hevini-red text-hevini-red hover:bg-hevini-red hover:text-white font-bold uppercase"
-                  style={{ letterSpacing: "0.1em" }}
-                >
-                  <Zap className="w-4 h-4 mr-2" />
-                  UPGRADE
-                </Button>
-              </Link>
-            )}
-            {!loading && (isLoggedIn ? (
-              <>
-                <p className="text-[11px] text-net-grey px-2 mt-2 truncate">{firstName ?? email}</p>
-                <Button
-                  variant="outline"
-                  onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
-                  className="w-full mt-1 rounded-[2px] border-[#333] text-net-grey hover:border-court-white hover:text-court-white font-bold uppercase"
-                  style={{ letterSpacing: "0.1em" }}
-                >
-                  LOGOUT
-                </Button>
-              </>
             ) : (
               <>
-                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button
-                    variant="outline"
-                    className="w-full mt-2 rounded-[2px] border-[#333] text-net-grey hover:border-court-white hover:text-court-white font-bold uppercase"
-                    style={{ letterSpacing: "0.1em" }}
-                  >
-                    LOGIN
-                  </Button>
-                </Link>
-                <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                  <Button
-                    className="w-full mt-2 bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] font-bold uppercase border-0"
-                    style={{ letterSpacing: "0.1em" }}
-                  >
-                    SIGN UP
-                  </Button>
-                </Link>
+                <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+                  <Link href="/login">Log in</Link>
+                </Button>
+                <Button asChild variant="ink" size="sm">
+                  <Link href="/signup">Join free</Link>
+                </Button>
               </>
-            ))}
+            )}
           </div>
-        )}
+        </div>
       </header>
 
-      <main className="flex-1">{children}</main>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.main
+          id="main"
+          key={location.split("/")[1] || "home"}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          className="flex-1 pb-28 md:pb-0"
+        >
+          {children}
+        </motion.main>
+      </AnimatePresence>
 
-      <WelcomeModal />
-      <ChatBot />
+      <Footer />
 
-      <footer className="bg-court-black border-t border-[#1A1A1A] text-court-white py-12 mt-12">
-        <div className="container mx-auto px-4 text-center">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <img src={signatureLogo} alt="" className="h-9 w-9 object-contain" />
-            <span
-              className="font-display font-black text-lg text-court-white"
-              style={{ letterSpacing: "0.12em" }}
-            >
-              10IS
-            </span>
-          </div>
-          <p className="text-xs uppercase text-net-grey" style={{ letterSpacing: "0.15em" }}>
-            Powered by Hevini Sporting
-          </p>
-
-          {/* Nav links */}
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-6">
-            {[
-              { label: "ABOUT", href: "/about" },
-              { label: "PRICING", href: "/pricing" },
-              { label: "PRIVACY", href: "/privacy" },
-              { label: "TERMS", href: "/terms" },
-            ].map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-xs text-net-grey hover:text-court-white transition-colors"
-                style={{ letterSpacing: "0.1em" }}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-
-          {/* Social icons */}
-          <div className="flex items-center justify-center gap-5 mt-5">
-            {/* Instagram */}
-            <a
-              href="https://www.instagram.com/10is.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="10IS on Instagram"
-              className="text-net-grey hover:text-court-white transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-              </svg>
-            </a>
-            {/* TikTok */}
-            <a
-              href="https://www.tiktok.com/@10is.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="10IS on TikTok"
-              className="text-net-grey hover:text-court-white transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V9.07a8.16 8.16 0 0 0 4.77 1.52V7.15a4.85 4.85 0 0 1-1-.46z" />
-              </svg>
-            </a>
-          </div>
-
-          <p className="text-xs text-net-grey mt-6">
-            &copy; {new Date().getFullYear()} Hevini Sporting. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      {/* Thumb-reachable tab bar on phones */}
+      <nav
+        aria-label="Main"
+        className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-line/70 bg-bg/85 backdrop-blur-xl md:hidden"
+      >
+        <ul className="mx-auto grid max-w-md grid-cols-5 px-2">
+          {nav.map((n) => {
+            const active = n.match ? n.match(location) : location === n.href;
+            const Icon = n.icon;
+            const center = n.href === "/setup";
+            return (
+              <li key={n.href}>
+                <Link
+                  href={n.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex flex-col items-center gap-1 py-2.5 text-[0.6875rem] font-medium transition-colors",
+                    active ? "text-ink" : "text-muted",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "relative grid place-items-center rounded-full transition-all duration-300 ease-spring",
+                      center ? "-mt-5 size-12 bg-brand text-brand-ink shadow-[0_10px_24px_-10px_rgb(var(--brand))]" : "size-7",
+                      active && !center && "bg-surface-2",
+                    )}
+                  >
+                    <Icon className={center ? "size-5" : "size-[1.15rem]"} />
+                    {n.href === "/bag" && <DueDot />}
+                  </span>
+                  {n.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
     </div>
   );
+}
+
+function Footer() {
+  return (
+    <footer className="mt-16 hidden border-t border-line md:block">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-6 py-10 text-sm text-muted">
+        <div className="flex items-center gap-3">
+          <Logo className="scale-90" />
+          <span>by Hevini Sporting</span>
+        </div>
+        <nav className="flex flex-wrap gap-6" aria-label="Footer">
+          <Link href="/about" className="hover:text-ink">About</Link>
+          <Link href="/pricing" className="hover:text-ink">Pricing</Link>
+          <Link href="/privacy" className="hover:text-ink">Privacy</Link>
+          <Link href="/terms" className="hover:text-ink">Terms</Link>
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-ink">Contact</a>
+        </nav>
+      </div>
+    </footer>
+  );
+}
+
+/** Standard page container. */
+export function Page({ children, className, narrow }: { children: React.ReactNode; className?: string; narrow?: boolean }) {
+  return <div className={cn("mx-auto w-full px-4 pt-6 sm:px-6 sm:pt-10", narrow ? "max-w-2xl" : "max-w-6xl", className)}>{children}</div>;
 }

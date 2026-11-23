@@ -1,133 +1,105 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import * as React from "react";
+import { Link, useLocation, useSearch } from "wouter";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useUser } from "@/contexts/UserContext";
-import signatureLogo from "@/assets/Hevini_08_Signature.png";
+import { Field, Input } from "@/components/ui/field";
+import { Card } from "@/components/ui/surface";
+import { Mark } from "@/components/Logo";
+import { api } from "@/lib/api";
+import type { Me } from "@/lib/types";
+import { useRefreshMe } from "@/hooks/use-me";
+
+/** Only allow same-site relative redirects. */
+export function safeNext(search: string, fallback = "/") {
+  const next = new URLSearchParams(search).get("next");
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : fallback;
+}
+
+export function PasswordInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  const [show, setShow] = React.useState(false);
+  return (
+    <div className="relative">
+      <Input {...props} type={show ? "text" : "password"} className="pr-12" />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-ink"
+        aria-label={show ? "Hide password" : "Show password"}
+      >
+        {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </div>
+  );
+}
+
+export function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle: string; children: React.ReactNode; footer: React.ReactNode }) {
+  return (
+    <div className="mx-auto flex min-h-[78vh] w-full max-w-md flex-col justify-center px-4 py-10">
+      <div className="mb-8 text-center">
+        <Mark className="mx-auto mb-5 size-12" />
+        <h1 className="display text-[2.75rem] leading-none">{title}</h1>
+        <p className="mt-3 text-[0.9375rem] text-muted">{subtitle}</p>
+      </div>
+      <Card className="p-6 sm:p-8">{children}</Card>
+      <p className="mt-6 text-center text-sm text-muted">{footer}</p>
+    </div>
+  );
+}
 
 export default function Login() {
+  const search = useSearch();
   const [, navigate] = useLocation();
-  const { refetch } = useUser();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const refreshMe = useRefreshMe();
+  const next = safeNext(search);
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    setError(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || "Login failed");
-        return;
-      }
-      refetch();
-      navigate("/");
-    } catch {
-      setError("Something went wrong. Please try again.");
+      const me = await api<Me>("POST", "/api/auth/login", { email, password });
+      await refreshMe(me);
+      navigate(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't log you in.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center mb-8">
-          <img src={signatureLogo} alt="10IS" className="h-10 w-10 object-contain mb-4" />
-          <h1
-            className="text-2xl font-black text-court-white uppercase"
-            style={{ letterSpacing: "0.12em" }}
-          >
-            SIGN IN
-          </h1>
-          <p className="text-net-grey text-sm mt-1">
-            Welcome back to 10IS
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="email"
-              className="text-[11px] font-bold uppercase text-net-grey"
-              style={{ letterSpacing: "0.1em" }}
-            >
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="you@example.com"
-              className="h-11 rounded-[2px] bg-[#111] border border-[#2A2A2A] text-court-white placeholder:text-[#444] focus-visible:ring-1 focus-visible:ring-hevini-red focus-visible:border-hevini-red"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="password"
-              className="text-[11px] font-bold uppercase text-net-grey"
-              style={{ letterSpacing: "0.1em" }}
-            >
-              Password
-            </Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                className="h-11 rounded-[2px] bg-[#111] border border-[#2A2A2A] text-court-white placeholder:text-[#444] focus-visible:ring-1 focus-visible:ring-hevini-red focus-visible:border-hevini-red pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-net-grey hover:text-court-white transition-colors"
-                tabIndex={-1}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <p className="text-hevini-red text-sm font-medium">{error}</p>
-          )}
-
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full h-11 bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] font-bold uppercase border-0 text-xs mt-2"
-            style={{ letterSpacing: "0.1em" }}
-          >
-            {loading ? "SIGNING IN..." : "SIGN IN"}
-          </Button>
-        </form>
-
-        <p className="text-center text-sm text-net-grey mt-6">
-          Don't have an account?{" "}
-          <Link href="/signup" className="text-court-white font-semibold hover:text-hevini-red transition-colors">
-            Create one
+    <AuthShell
+      title="Welcome back"
+      subtitle="Your rackets, strings and stringers are waiting."
+      footer={
+        <>
+          New to 10IS?{" "}
+          <Link href={`/signup${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`} className="font-semibold text-ink underline-offset-4 hover:underline">
+            Create a free account
           </Link>
-        </p>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="space-y-4" noValidate>
+        <Field label="Email">
+          <Input type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required autoFocus />
+        </Field>
+        <Field label="Password">
+          <PasswordInput autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </Field>
+        {error && (
+          <p className="rounded-xl bg-brand-soft px-4 py-3 text-sm text-brand" role="alert">
+            {error}
+          </p>
+        )}
+        <Button type="submit" size="lg" className="w-full" loading={loading}>
+          Log in
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

@@ -1,397 +1,418 @@
-import { useState, useMemo } from "react";
-import { Link, useLocation } from "wouter";
-import { Search, Lock, X, ArrowRight, ExternalLink } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import * as React from "react";
+import { RacketForm } from "@/features/RacketForm";
+import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, Briefcase, ExternalLink, Lock, Search, X } from "lucide-react";
+import { Page } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { useAllRackets } from "@/hooks/use-rackets";
-import { useUser } from "@/contexts/UserContext";
-import type { RacketResult } from "@shared/routes";
+import { Input, Select } from "@/components/ui/field";
+import { Badge, Card, Chip, EmptyState, PageHeader, Skeleton } from "@/components/ui/surface";
+import { Sheet } from "@/components/ui/sheet";
+import { UpgradeCard } from "@/components/UpgradeCard";
+import { useMe } from "@/hooks/use-me";
+import type { CatalogRacket } from "@/lib/types";
+import { FREE_CATALOG_PER_BRAND } from "@shared/tiers";
+import { cn } from "@/lib/utils";
 
-const FREE_PER_BRAND = 3;
+type Sort = "featured" | "name" | "stiffness" | "weight" | "head";
 
-const LEVEL_STYLE: Record<string, string> = {
-  beginner: "text-emerald-400 border-emerald-900",
-  intermediate: "text-sky-400 border-sky-900",
-  advanced: "text-amber-400 border-amber-900",
-  pro: "text-red-500 border-red-900",
+const LEVEL_TONE: Record<string, "grass" | "hard" | "clay" | "brand"> = {
+  beginner: "grass",
+  intermediate: "hard",
+  advanced: "clay",
+  pro: "brand",
 };
 
-// String recommendations based on frame specs
-function getStringRecs(ra: number | null | undefined, headSize: number | null | undefined) {
+const isFeatured = (r: CatalogRacket) => r.brand === "Hevini" || r.model.includes("Defyer");
+
+function brandOrder(a: string, b: string) {
+  if (a === "Hevini") return -1;
+  if (b === "Hevini") return 1;
+  if (a === "Wilson") return -1;
+  if (b === "Wilson") return 1;
+  return a.localeCompare(b);
+}
+
+/** Plain-English string guidance from frame specs (carried over from v1). */
+function stringGuidance(ra: number | null, headSize: number | null) {
   const recs: { type: string; reason: string }[] = [];
   if (ra != null) {
-    if (ra < 60) {
-      recs.push({ type: "Natural Gut or Multifilament", reason: "Low-stiffness frame — lively strings keep the feel responsive and arm-friendly" });
-    } else if (ra <= 67) {
-      recs.push({ type: "Polyester or Gut/Poly Hybrid", reason: "Mid-range stiffness suits both control-oriented poly and hybrid setups" });
-    } else {
-      recs.push({ type: "Soft Multifilament or Arm-friendly Poly", reason: "Stiff frame — softer strings help reduce transmitted shock to the arm" });
-    }
+    if (ra < 60) recs.push({ type: "Natural gut or multifilament", reason: "Low-stiffness frame — lively strings keep the feel responsive and arm-friendly." });
+    else if (ra <= 67) recs.push({ type: "Polyester or a gut/poly hybrid", reason: "Mid-range stiffness suits both control-oriented poly and hybrid setups." });
+    else recs.push({ type: "Soft multifilament or arm-friendly poly", reason: "Stiff frame — softer strings reduce the shock sent to your arm." });
   }
   if (headSize != null) {
-    if (headSize < 95) {
-      recs.push({ type: "Higher tension, control strings", reason: "Small head: tighten the string bed for precision and feel" });
-    } else if (headSize <= 100) {
-      recs.push({ type: "Balanced tension, versatile setup", reason: "Mid head size suits most string types at standard tension" });
-    } else if (headSize <= 107) {
-      recs.push({ type: "Mid-tension power strings", reason: "Midplus head: slightly lower tension amplifies the natural launch angle" });
-    } else {
-      recs.push({ type: "Low tension, power-oriented strings", reason: "Large head: a looser string bed enhances the generous sweet spot" });
-    }
+    if (headSize < 95) recs.push({ type: "Higher tension, control strings", reason: "Small head — a tighter bed gives precision and feel." });
+    else if (headSize <= 100) recs.push({ type: "Balanced tension, versatile setup", reason: "Mid head size suits most strings at standard tension." });
+    else if (headSize <= 107) recs.push({ type: "Mid tension, power strings", reason: "Midplus head — slightly lower tension boosts the natural launch." });
+    else recs.push({ type: "Low tension, power strings", reason: "Large head — a looser bed enlarges the sweet spot." });
   }
   return recs;
 }
 
-// ── Racket Detail Modal ──────────────────────────────────────────────────────
+export default function Rackets() {
+  const { ent, signedIn } = useMe();
+  const { data = [], isLoading, error, refetch } = useQuery<CatalogRacket[]>({
+    queryKey: ["/api/rackets/search"],
+    staleTime: 10 * 60_000,
+  });
+  const [query, setQuery] = React.useState("");
+  const [brand, setBrand] = React.useState<string | null>(null);
+  const [sort, setSort] = React.useState<Sort>("featured");
+  const [selected, setSelected] = React.useState<CatalogRacket | null>(null);
+  const [addToBag, setAddToBag] = React.useState<CatalogRacket | null>(null);
+  const full = ent.fullCatalog;
 
-function RacketModal({ racket, onClose }: { racket: RacketResult; onClose: () => void }) {
-  const [, navigate] = useLocation();
-  const levelCls = LEVEL_STYLE[racket.level ?? "intermediate"] ?? LEVEL_STYLE.intermediate;
-  const stringRecs = getStringRecs(racket.stiffnessRa, racket.headSize);
-  const isHeviniSolution1 = racket.brand === "Hevini" && racket.model === "Solution 1";
+  const brands = React.useMemo(
+    () => Array.from(new Set(data.map((r) => r.brand))).sort(brandOrder),
+    [data],
+  );
 
-  const racketLabel = encodeURIComponent(`${racket.brand} ${racket.model}`);
-  const onboardingUrl = `/onboarding?racketId=${racket.id}&racketName=${racketLabel}`;
+  const filtered = React.useMemo(() => {
+    const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    let list = data.filter(
+      (r) =>
+        (!brand || r.brand === brand) &&
+        terms.every((t) => `${r.brand} ${r.model} ${r.stringPattern ?? ""}`.toLowerCase().includes(t)),
+    );
+    const num = (v: number | null) => (v == null ? Number.POSITIVE_INFINITY : v);
+    list = [...list].sort((a, b) => {
+      switch (sort) {
+        case "name":
+          return `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
+        case "stiffness":
+          return num(a.stiffnessRa) - num(b.stiffnessRa);
+        case "weight":
+          return num(a.weightUnstrung) - num(b.weightUnstrung);
+        case "head":
+          return num(a.headSize) - num(b.headSize);
+        default:
+          return brandOrder(a.brand, b.brand) || Number(isFeatured(b)) - Number(isFeatured(a)) || a.model.localeCompare(b.model);
+      }
+    });
+    return list;
+  }, [data, query, brand, sort]);
 
-  function handleGetRec() {
-    onClose();
-    navigate(onboardingUrl);
-  }
+  // Free plan: first few frames of each brand are open; the rest are previewed, locked.
+  const { visible, lockedCount, lockedPreview } = React.useMemo(() => {
+    if (full) return { visible: filtered, lockedCount: 0, lockedPreview: [] as CatalogRacket[] };
+    const perBrand = new Map<string, number>();
+    const brandRank = new Map<number, number>();
+    for (const r of [...data].sort((a, b) => brandOrder(a.brand, b.brand) || Number(isFeatured(b)) - Number(isFeatured(a)) || a.model.localeCompare(b.model))) {
+      const n = perBrand.get(r.brand) ?? 0;
+      brandRank.set(r.id, n);
+      perBrand.set(r.brand, n + 1);
+    }
+    const open = filtered.filter((r) => (brandRank.get(r.id) ?? 0) < FREE_CATALOG_PER_BRAND);
+    const locked = filtered.filter((r) => (brandRank.get(r.id) ?? 0) >= FREE_CATALOG_PER_BRAND);
+    return { visible: open, lockedCount: locked.length, lockedPreview: locked.slice(0, 3) };
+  }, [filtered, data, full]);
 
   return (
-    <div
-      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center sm:p-4"
-      style={{ background: "rgba(0,0,0,0.85)" }}
-      onClick={onClose}
-    >
-      <div
-        className="relative w-full sm:max-w-lg bg-[#0A0A0A] border border-[#1A1A1A] rounded-t-[8px] sm:rounded-[4px] shadow-2xl flex flex-col"
-        style={{ maxHeight: "92vh" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Close */}
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute top-3 right-3 z-10 flex items-center justify-center bg-[#1C1C1C] border border-[#333] rounded-[4px] text-net-grey hover:text-court-white hover:border-[#555] transition-colors"
-          style={{ width: 40, height: 40 }}
-        >
-          <X className="w-4 h-4" />
-        </button>
+    <Page>
+      <PageHeader
+        eyebrow="Racket catalog"
+        title={
+          <>
+            {data.length > 0 ? data.length : "140+"} frames, <em className="text-brand">decoded</em>
+          </>
+        }
+        description="Head size, pattern, stiffness and tension range for every current frame — and what to string it with."
+      />
 
-        <div className="overflow-y-auto flex-1 px-5 pt-5 pb-5 sm:px-6 sm:pt-6 sm:pb-6">
-          {/* Header */}
-          <div className="mb-5 pr-10">
-            <div className="flex items-center gap-2 mb-1">
-              <p
-                className={`text-[10px] font-bold uppercase ${racket.brand === "Hevini" ? "text-hevini-red" : "text-net-grey"}`}
-                style={{ letterSpacing: "0.12em" }}
+      <div className="sticky top-16 z-20 -mx-4 mb-6 space-y-3 bg-bg/85 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search brand, model or pattern"
+              className="pl-11 pr-10"
+              aria-label="Search rackets"
+              enterKeyHint="search"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="absolute right-3 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-ink"
+                aria-label="Clear search"
               >
-                {racket.brand}
-              </p>
-              {racket.level && (
-                <span className={`text-[9px] font-bold border px-1.5 py-0.5 rounded-[2px] uppercase ${levelCls}`} style={{ letterSpacing: "0.08em" }}>
-                  {racket.level}
-                </span>
-              )}
-            </div>
-            <h2 className="text-court-white font-bold text-xl leading-tight">{racket.model}</h2>
+                <X className="size-4" />
+              </button>
+            )}
           </div>
+          <div className="w-36 shrink-0 sm:w-44">
+            <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort rackets">
+              <option value="featured">Featured</option>
+              <option value="name">A–Z</option>
+              <option value="stiffness">Softest first</option>
+              <option value="weight">Lightest first</option>
+              <option value="head">Smallest head</option>
+            </Select>
+          </div>
+        </div>
+        <div className="scrollbar-none -mx-4 flex gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6" role="group" aria-label="Filter by brand">
+          <Chip selected={!brand} onClick={() => setBrand(null)} className="shrink-0 py-2">
+            All
+          </Chip>
+          {brands.map((b) => (
+            <Chip key={b} selected={brand === b} onClick={() => setBrand(brand === b ? null : b)} className="shrink-0 py-2">
+              {b}
+            </Chip>
+          ))}
+        </div>
+      </div>
 
-          {/* Specs grid */}
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            {[
-              { label: "Head Size", value: racket.headSize ? `${racket.headSize} in²` : null },
-              { label: "Weight (unstrung)", value: racket.weightUnstrung ? `${racket.weightUnstrung} g` : null },
-              { label: "String Pattern", value: racket.stringPattern },
-              { label: "RA Stiffness", value: racket.stiffnessRa != null ? String(racket.stiffnessRa) : null },
-              { label: "Beam Width", value: racket.beamWidth },
-              { label: "Balance", value: racket.balance },
-              { label: "Rec. Tension", value: racket.recTensionMin && racket.recTensionMax ? `${racket.recTensionMin}–${racket.recTensionMax} lbs` : null },
-              { label: "Year", value: racket.year ? String(racket.year) : null },
-            ]
-              .filter((s) => s.value)
-              .map((s) => (
-                <div key={s.label} className="bg-[#111] border border-[#1A1A1A] rounded-[4px] px-3 py-2.5">
-                  <p className="text-[9px] font-bold text-net-grey uppercase mb-1" style={{ letterSpacing: "0.1em" }}>{s.label}</p>
-                  <p className="text-court-white font-medium text-sm">{s.value}</p>
-                </div>
+      {isLoading && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Loading rackets">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-52 rounded-2xl" />
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <EmptyState title="Couldn't load the catalog" body={(error as Error).message} action={<Button variant="secondary" onClick={() => refetch()}>Try again</Button>} />
+      )}
+
+      {!isLoading && !error && filtered.length === 0 && (
+        <EmptyState
+          icon={<Search />}
+          title="No rackets match"
+          body="Try a different spelling or clear the brand filter. You can still add any racket to your bag by hand."
+          action={
+            <Button variant="secondary" onClick={() => { setQuery(""); setBrand(null); }}>
+              Clear filters
+            </Button>
+          }
+        />
+      )}
+
+      {visible.length > 0 && (
+        <>
+          <p className="mb-3 text-sm text-muted">
+            {filtered.length} racket{filtered.length === 1 ? "" : "s"}
+            {!full && lockedCount > 0 && ` · ${visible.length} open on the free plan`}
+          </p>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {visible.map((r, i) => (
+              <li key={r.id} className="animate-fade-up" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
+                <RacketCard racket={r} onOpen={() => setSelected(r)} />
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {!full && lockedCount > 0 && (
+        <section className="mt-6" aria-label="Locked rackets">
+          <div className="relative overflow-hidden rounded-2xl">
+            <ul className="pointer-events-none grid select-none gap-3 opacity-50 blur-[6px] sm:grid-cols-2 lg:grid-cols-3" aria-hidden>
+              {lockedPreview.map((r) => (
+                <li key={r.id}>
+                  <RacketCard racket={r} />
+                </li>
               ))}
-          </div>
-
-          {/* String recommendations */}
-          {stringRecs.length > 0 && (
-            <div className="mb-5">
-              <p className="text-[10px] font-bold text-net-grey uppercase mb-3" style={{ letterSpacing: "0.12em" }}>
-                Recommended String Types
-              </p>
-              <div className="space-y-2">
-                {stringRecs.map((rec) => (
-                  <div key={rec.type} className="bg-[#0D0D0D] border border-[#1A1A1A] rounded-[4px] p-3">
-                    <p className="text-court-white font-bold text-xs mb-0.5">{rec.type}</p>
-                    <p className="text-net-grey text-[11px] leading-snug">{rec.reason}</p>
-                  </div>
-                ))}
+            </ul>
+            <div className="absolute inset-0 grid place-items-center bg-gradient-to-b from-bg/30 via-bg/70 to-bg p-4">
+              <div className="w-full max-w-lg">
+                <UpgradeCard
+                  title={`${lockedCount} more racket${lockedCount === 1 ? "" : "s"} in the catalog`}
+                  body={`Free shows the top ${FREE_CATALOG_PER_BRAND} frames per brand. Pro opens every frame and spec.`}
+                />
               </div>
             </div>
-          )}
+          </div>
+        </section>
+      )}
 
-          {/* Source link */}
-          {racket.sourceUrl && (
-            <a
-              href={racket.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-[11px] text-net-grey hover:text-hevini-red transition-colors mb-5"
-            >
-              <ExternalLink className="w-3 h-3" />
-              View racket details
+      <RacketSheet
+        racket={selected}
+        signedIn={signedIn}
+        onClose={() => setSelected(null)}
+        onAddToBag={(r) => {
+          setSelected(null);
+          setAddToBag(r);
+        }}
+      />
+      <RacketForm open={!!addToBag} onOpenChange={(v) => !v && setAddToBag(null)} initial={addToBag} />
+    </Page>
+  );
+}
+
+function StiffnessBar({ ra }: { ra: number | null }) {
+  if (ra == null) return null;
+  // RA 50 (very soft) → 75 (very stiff)
+  const pct = Math.max(4, Math.min(100, ((ra - 50) / 25) * 100));
+  const tone = ra >= 68 ? "bg-brand" : ra >= 63 ? "bg-clay" : "bg-grass";
+  return (
+    <div>
+      <div className="flex items-baseline justify-between text-xs">
+        <span className="text-muted">Stiffness</span>
+        <span className="font-mono font-semibold tabular">RA {ra}</span>
+      </div>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden>
+        <div className={cn("h-full rounded-full", tone)} style={{ width: `${pct}%` }} />
+      </div>
+      <div className="mt-1 flex justify-between text-[0.625rem] text-faint" aria-hidden>
+        <span>Soft</span>
+        <span>Stiff</span>
+      </div>
+    </div>
+  );
+}
+
+function Spec({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[0.6875rem] text-muted">{label}</dt>
+      <dd className="truncate font-mono text-sm font-semibold tabular">{value ?? "—"}</dd>
+    </div>
+  );
+}
+
+function RacketCard({ racket: r, onOpen }: { racket: CatalogRacket; onOpen?: () => void }) {
+  const featured = isFeatured(r);
+  return (
+    <Card
+      className={cn(
+        "group flex h-full flex-col p-5 text-left transition-[box-shadow,transform] duration-300 ease-spring",
+        onOpen && "cursor-pointer hover:-translate-y-0.5 hover:shadow-lift",
+        featured && "ring-brand/30",
+      )}
+    >
+      <button type="button" onClick={onOpen} disabled={!onOpen} className="flex flex-1 flex-col text-left focus-visible:outline-none" aria-label={`${r.brand} ${r.model} details`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className={cn("eyebrow", r.brand === "Hevini" && "text-brand")}>{r.brand}</p>
+            <h3 className="mt-1 text-lg font-semibold leading-snug">{r.model}</h3>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            {featured && <Badge tone="brand">Featured</Badge>}
+            {r.level && <Badge tone={LEVEL_TONE[r.level] ?? "neutral"} className="capitalize">{r.level}</Badge>}
+          </div>
+        </div>
+        <dl className="mt-4 grid grid-cols-3 gap-3">
+          <Spec label="Head" value={r.headSize ? `${r.headSize} in²` : null} />
+          <Spec label="Pattern" value={r.stringPattern} />
+          <Spec label="Weight" value={r.weightUnstrung ? `${r.weightUnstrung} g` : null} />
+          <Spec label="Balance" value={r.balance} />
+          <Spec label="Tension" value={r.recTensionMin && r.recTensionMax ? `${r.recTensionMin}–${r.recTensionMax}` : null} />
+          <Spec label="Beam" value={r.beamWidth} />
+        </dl>
+        <div className="mt-4">
+          <StiffnessBar ra={r.stiffnessRa} />
+        </div>
+      </button>
+      {onOpen && (
+        <div className="mt-4 flex gap-2 border-t border-line pt-4">
+          <Button asChild size="sm" variant="ink" className="flex-1">
+            <Link href={`/setup?racketId=${r.id}`}>
+              Get a setup <ArrowRight />
+            </Link>
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onOpen}>
+            Details
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function RacketSheet({
+  racket: r,
+  signedIn,
+  onClose,
+  onAddToBag,
+}: {
+  racket: CatalogRacket | null;
+  signedIn: boolean;
+  onClose: () => void;
+  onAddToBag: (r: CatalogRacket) => void;
+}) {
+  const guidance = r ? stringGuidance(r.stiffnessRa, r.headSize) : [];
+  const specs = r
+    ? [
+        { label: "Head size", value: r.headSize ? `${r.headSize} in²` : null },
+        { label: "Weight (unstrung)", value: r.weightUnstrung ? `${r.weightUnstrung} g` : null },
+        { label: "String pattern", value: r.stringPattern },
+        { label: "Stiffness", value: r.stiffnessRa != null ? `RA ${r.stiffnessRa}` : null },
+        { label: "Beam width", value: r.beamWidth },
+        { label: "Balance", value: r.balance },
+        { label: "Tension range", value: r.recTensionMin && r.recTensionMax ? `${r.recTensionMin}–${r.recTensionMax} lbs` : null },
+        { label: "Year", value: r.year ? String(r.year) : null },
+      ].filter((s) => s.value)
+    : [];
+
+  return (
+    <Sheet
+      open={!!r}
+      onOpenChange={(v) => !v && onClose()}
+      title={r ? r.model : ""}
+      description={r ? `${r.brand}${r.level ? ` · ${r.level[0].toUpperCase()}${r.level.slice(1)}` : ""}` : undefined}
+      footer={
+        r && (
+          <div className="flex flex-col gap-2">
+            <Button asChild size="lg" className="w-full">
+              <Link href={`/setup?racketId=${r.id}`} onClick={onClose}>
+                Get a string setup for this racket <ArrowRight />
+              </Link>
+            </Button>
+            {signedIn && (
+              <Button variant="secondary" className="w-full" onClick={() => onAddToBag(r)}>
+                <Briefcase /> Add one to my bag
+              </Button>
+            )}
+            {r.brand === "Hevini" && r.model === "Solution 1" && (
+              <Button asChild variant="danger" className="w-full">
+                <a href="https://hevinisporting.com" target="_blank" rel="noopener noreferrer">
+                  Get the Hevini Solution 1 <ExternalLink />
+                </a>
+              </Button>
+            )}
+          </div>
+        )
+      }
+    >
+      {r && (
+        <div className="space-y-6">
+          <dl className="grid grid-cols-2 gap-2">
+            {specs.map((s) => (
+              <div key={s.label} className="rounded-xl bg-surface-2/70 px-3.5 py-3">
+                <dt className="text-xs text-muted">{s.label}</dt>
+                <dd className="mt-0.5 font-mono text-sm font-semibold tabular">{s.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <StiffnessBar ra={r.stiffnessRa} />
+          {guidance.length > 0 && (
+            <section>
+              <h3 className="eyebrow mb-3">What to string it with</h3>
+              <ul className="space-y-2">
+                {guidance.map((g) => (
+                  <li key={g.type} className="rounded-xl border border-line p-3.5">
+                    <p className="text-sm font-semibold">{g.type}</p>
+                    <p className="mt-0.5 text-sm leading-relaxed text-muted">{g.reason}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {r.sourceUrl && (
+            <a href={r.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
+              <ExternalLink className="size-3.5" /> Manufacturer details
             </a>
           )}
-
-          {/* CTA buttons */}
-          <div className="space-y-2">
-            <Button
-              onClick={handleGetRec}
-              className="w-full h-11 bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] font-bold uppercase border-0 text-xs"
-              style={{ letterSpacing: "0.1em" }}
-            >
-              GET RECOMMENDATION WITH THIS RACKET <ArrowRight className="ml-2 w-3.5 h-3.5" />
-            </Button>
-            {isHeviniSolution1 && (
-              <a href="https://hevinisporting.com" target="_blank" rel="noopener noreferrer" className="block">
-                <Button
-                  variant="outline"
-                  className="w-full h-11 rounded-[2px] border-hevini-red text-hevini-red hover:bg-hevini-red hover:text-white font-bold uppercase text-xs transition-colors"
-                  style={{ letterSpacing: "0.1em" }}
-                >
-                  GET THE HEVINI SOLUTION 1
-                </Button>
-              </a>
-            )}
-          </div>
+          {!signedIn && (
+            <p className="flex items-center gap-2 text-xs text-muted">
+              <Lock className="size-3" /> <Link href="/signup" className="underline underline-offset-2">Join free</Link> to keep this racket in your bag and track restrings.
+            </p>
+          )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Main Page ────────────────────────────────────────────────────────────────
-
-export default function Rackets() {
-  const [query, setQuery] = useState("");
-  const [selectedRacket, setSelectedRacket] = useState<RacketResult | null>(null);
-  const { canViewAllRackets, isAdmin } = useUser();
-  const { data: allRackets = [], isLoading } = useAllRackets();
-  const canSeeAll = canViewAllRackets || isAdmin;
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return allRackets;
-    return allRackets.filter(
-      (r) => r.brand.toLowerCase().includes(q) || r.model.toLowerCase().includes(q)
-    );
-  }, [allRackets, query]);
-
-  const groups = useMemo(() => {
-    const map = new Map<string, RacketResult[]>();
-    for (const r of filtered) {
-      if (!map.has(r.brand)) map.set(r.brand, []);
-      map.get(r.brand)!.push(r);
-    }
-    return [...map.entries()].sort(([a], [b]) => {
-      if (a === "Hevini") return -1;
-      if (b === "Hevini") return 1;
-      if (a === "Wilson") return -1;
-      if (b === "Wilson") return 1;
-      return a.localeCompare(b);
-    });
-  }, [filtered]);
-
-  return (
-    <div className="min-h-screen bg-court-black text-court-white">
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
-        <div className="mb-10">
-          <h1
-            className="font-display font-black text-4xl md:text-5xl text-court-white mb-3 uppercase"
-            style={{ letterSpacing: "0.04em" }}
-          >
-            Rackets
-          </h1>
-          <p className="text-net-grey text-sm">
-            Browse racket specs and click any card to see compatible string types.
-          </p>
-        </div>
-
-        <div className="relative mb-10">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-net-grey" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search brand or model..."
-            className="pl-9 bg-[#111] border-[#262626] text-court-white placeholder:text-net-grey focus-visible:ring-hevini-red rounded-[2px] h-11"
-          />
-        </div>
-
-        {isLoading && (
-          <div className="text-net-grey text-sm text-center py-16">Loading rackets...</div>
-        )}
-
-        {!isLoading && groups.length === 0 && (
-          <div className="text-net-grey text-sm text-center py-16">No rackets found.</div>
-        )}
-
-        <div className="space-y-12">
-          {groups.map(([brand, brandRackets]) => {
-            const isHevini = brand === "Hevini";
-            const hasDefyer = brand === "Wilson" && brandRackets.some(r => r.model.includes("Defyer"));
-            const visible = canSeeAll ? brandRackets : brandRackets.slice(0, FREE_PER_BRAND);
-            const hidden = canSeeAll ? [] : brandRackets.slice(FREE_PER_BRAND);
-
-            return (
-              <section key={brand}>
-                {/* Brand header */}
-                <div className="flex items-center gap-3 mb-4">
-                  <h2
-                    className={`font-display font-black text-base uppercase shrink-0 ${isHevini ? "text-hevini-red" : "text-court-white"}`}
-                    style={{ letterSpacing: "0.12em" }}
-                  >
-                    {brand}
-                  </h2>
-                  {(isHevini || hasDefyer) && (
-                    <span
-                      className="text-[9px] font-bold bg-hevini-red text-white px-2 py-0.5 rounded-[2px] shrink-0"
-                      style={{ letterSpacing: "0.12em" }}
-                    >
-                      FEATURED
-                    </span>
-                  )}
-                  <div className="flex-1 h-px bg-[#1A1A1A]" />
-                  <span className="text-[10px] text-net-grey shrink-0">
-                    {brandRackets.length} racket{brandRackets.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-
-                {/* Visible cards */}
-                <div className="space-y-2">
-                  {visible.map((r) => (
-                    <RacketCard
-                      key={r.id}
-                      racket={r}
-                      featured={isHevini || r.model.includes("Defyer")}
-                      onClick={() => setSelectedRacket(r)}
-                    />
-                  ))}
-                </div>
-
-                {/* Locked section */}
-                {hidden.length > 0 && (
-                  <div className="relative mt-2 rounded-[4px] overflow-hidden">
-                    <div className="blur-sm opacity-40 pointer-events-none select-none space-y-2">
-                      {hidden.slice(0, 2).map((r) => (
-                        <RacketCard key={r.id} racket={r} featured={false} />
-                      ))}
-                    </div>
-                    <div className="absolute inset-0 flex items-center justify-center bg-[#0A0A0A]/70">
-                      <div className="text-center px-4">
-                        <Lock className="w-4 h-4 text-hevini-red mx-auto mb-2" />
-                        <p className="text-court-white font-bold text-xs mb-3">
-                          {hidden.length} more {brand} racket{hidden.length !== 1 ? "s" : ""} hidden
-                        </p>
-                        <Link href="/pricing">
-                          <Button
-                            size="sm"
-                            className="bg-hevini-red hover:bg-hevini-red-dark text-white rounded-[2px] font-bold uppercase border-0 text-[10px] h-7 px-4"
-                            style={{ letterSpacing: "0.1em" }}
-                          >
-                            UPGRADE TO PRO
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </section>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Racket detail modal */}
-      {selectedRacket && (
-        <RacketModal racket={selectedRacket} onClose={() => setSelectedRacket(null)} />
       )}
-    </div>
-  );
-}
-
-// ── Card ─────────────────────────────────────────────────────────────────────
-
-function RacketCard({
-  racket,
-  featured,
-  onClick,
-}: {
-  racket: RacketResult;
-  featured: boolean;
-  onClick?: () => void;
-}) {
-  const levelCls =
-    LEVEL_STYLE[racket.level ?? "intermediate"] ?? LEVEL_STYLE.intermediate;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full text-left bg-[#111] border rounded-[4px] p-4 transition-colors ${
-        featured
-          ? "border-hevini-red/20 hover:border-hevini-red/60"
-          : "border-[#1E1E1E] hover:border-[#444]"
-      } ${onClick ? "cursor-pointer" : "cursor-default"}`}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <p className="text-court-white font-bold text-sm truncate">{racket.model}</p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5">
-            {racket.headSize && (
-              <Spec label="Head" value={`${racket.headSize} in²`} />
-            )}
-            {racket.weightUnstrung && (
-              <Spec label="Weight" value={`${racket.weightUnstrung}g`} />
-            )}
-            {racket.stringPattern && (
-              <Spec label="Pattern" value={racket.stringPattern} />
-            )}
-            {racket.recTensionMin && racket.recTensionMax && (
-              <Spec
-                label="Tension"
-                value={`${racket.recTensionMin}–${racket.recTensionMax} lbs`}
-              />
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {racket.level && (
-            <span
-              className={`text-[9px] font-bold border px-2 py-0.5 rounded-[2px] uppercase ${levelCls}`}
-              style={{ letterSpacing: "0.1em" }}
-            >
-              {racket.level}
-            </span>
-          )}
-          {onClick && (
-            <ArrowRight className="w-3.5 h-3.5 text-net-grey opacity-40" />
-          )}
-        </div>
-      </div>
-    </button>
-  );
-}
-
-function Spec({ label, value }: { label: string; value: string }) {
-  return (
-    <span className="text-xs text-net-grey">
-      {label}: <span className="text-court-white font-medium">{value}</span>
-    </span>
+    </Sheet>
   );
 }

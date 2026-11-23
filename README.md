@@ -1,111 +1,64 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, real } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod";
+# 10IS — your racket, dialled in
 
-// Rackets table
-export const rackets = pgTable("rackets", {
-  id: serial("id").primaryKey(),
-  sport: text("sport").default("tennis").notNull(),
-  brand: text("brand").notNull(),
-  model: text("model").notNull(),
-  headSize: integer("head_size"), // sq in
-  stringPattern: text("string_pattern"), // e.g., "16x19"
-  weightUnstrung: real("weight_unstrung"), // grams
-  balance: text("balance"), // e.g. "320mm" or "7 pts HL"
-  stiffnessRa: integer("stiffness_ra"),
-  beamWidth: text("beam_width"),
-  recTensionMin: integer("rec_tension_min"),
-  recTensionMax: integer("rec_tension_max"),
-  sourceUrl: text("source_url"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+10IS is a tennis app by Hevini Sporting. Players get an AI string setup tuned to their racket and game, keep a bag of rackets with the full restring history of each, get reminded when strings are past their best, and save the stringers they trust.
 
-// Recommendation Runs table
-export const recommendationRuns = pgTable("recommendation_runs", {
-  id: serial("id").primaryKey(),
-  sessionId: text("session_id"),
-  racketId: integer("racket_id").references(() => rackets.id),
-  inputsJson: jsonb("inputs_json").notNull(),
-  outputJson: jsonb("output_json").notNull(),
-  confidence: text("confidence").notNull(), // "high" | "medium" | "estimated"
-  createdAt: timestamp("created_at").defaultNow(),
-});
+## Stack
 
-// Feedback table
-export const feedback = pgTable("feedback", {
-  id: serial("id").primaryKey(),
-  recommendationRunId: integer("recommendation_run_id").references(() => recommendationRuns.id).notNull(),
-  ratingPower: integer("rating_power"),
-  ratingControl: integer("rating_control"),
-  ratingComfort: integer("rating_comfort"),
-  durabilityHours: real("durability_hours"),
-  comments: text("comments"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+- **Client:** React 18, Vite, Tailwind, TanStack Query, wouter, framer-motion, Radix + vaul sheets, sonner toasts
+- **Server:** Express, Drizzle ORM, Postgres (PGlite locally), express-session (Postgres-backed in production)
+- **Integrations:** OpenAI (recommendations + Club chat), Stripe (Pro one-time, Club monthly), Google Places (stringer search), Resend (optional reminder emails)
 
-// Conversations table (for AI chat)
-export const conversations = pgTable("conversations", {
-  id: serial("id").primaryKey(),
-  title: text("title").notNull().default("New Chat"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+## Run it locally
 
-// Messages table (for AI chat)
-export const messages = pgTable("messages", {
-  id: serial("id").primaryKey(),
-  conversationId: integer("conversation_id").references(() => conversations.id).notNull(),
-  role: text("role").notNull(), // "user" | "assistant"
-  content: text("content").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+```bash
+npm install
+npm run dev
+```
 
-// Zod Schemas
-export const insertRacketSchema = createInsertSchema(rackets).omit({ id: true, createdAt: true });
-export const insertRunSchema = createInsertSchema(recommendationRuns).omit({ id: true, createdAt: true });
-export const insertFeedbackSchema = createInsertSchema(feedback).omit({ id: true, createdAt: true });
+Open http://localhost:5000. With no `DATABASE_URL`, the app runs on an embedded PGlite database in `.data/pglite` — no Postgres needed. Without API keys, recommendations fall back to a safe baseline setup, and stringer search and payments explain that they're not configured.
 
-// Types
-export type Racket = typeof rackets.$inferSelect;
-export type RecommendationRun = typeof recommendationRuns.$inferSelect;
-export type Feedback = typeof feedback.$inferSelect;
+Copy `.env.example` to `.env` to add keys.
 
-export type InsertRacket = z.infer<typeof insertRacketSchema>;
-export type InsertRun = z.infer<typeof insertRunSchema>;
-export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
+## Scripts
 
-// Onboarding Inputs Schema
-export const onboardingInputsSchema = z.object({
-  racketId: z.number().nullable(),
-  level: z.string().optional(), 
-  playstyle: z.enum(["baseliner", "all-court", "serve&volley", "defensive", "aggressive"]).optional(),
-  goals: z.array(z.string()).max(3).optional(), 
-  swingSpeed: z.enum(["slow", "medium", "fast"]).optional(),
-  injuryRisk: z.enum(["none", "elbow", "shoulder", "wrist"]).optional(),
-  frequency: z.enum(["1-2", "3-4", "5+"]).optional(), // hours per week
-  stringHistory: z.string().optional(),
-  tensionHistory: z.string().optional(),
-});
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | API + Vite dev server on port 5000 |
+| `npm test` | API and reminder-logic tests (PGlite in memory) |
+| `npm run check` | TypeScript across client, server and shared |
+| `npm run build` | Production client bundle + server bundle in `dist/` |
+| `npm run db:generate` | Regenerate SQL migrations from `shared/schema.ts` (used by PGlite) |
+| `npm run db:push` | Sync the schema to `DATABASE_URL` (run on deploy) |
 
-export type OnboardingInputs = z.infer<typeof onboardingInputsSchema>;
+## Layout
 
-// AI Output Schema
-export const stringSetupSchema = z.object({
-  stringFamily: z.string(),
-  exampleStrings: z.array(z.string()),
-  gauge: z.string(),
-  tension: z.string(),
-});
+```
+client/src/
+  pages/        one file per route
+  features/     racket, restring and stringer forms and cards
+  components/   layout, design-system primitives (ui/), freshness ring
+  hooks/ lib/   data hooks, API client, formatting
+server/
+  routes/       account, bag (rackets + history), stringers, recommend, billing, admin, chat
+  auth.ts       sessions, entitlements, rate limiting
+  reminder-mailer.ts  due-reminder emails
+shared/
+  schema.ts     database tables and input validation
+  reminders.ts  restring interval maths (used by both client and server)
+  tiers.ts      plan limits and entitlements
+tests/          vitest + supertest
+```
 
-export const recommendationOutputSchema = z.object({
-  setup: z.object({
-    mains: stringSetupSchema,
-    crosses: stringSetupSchema.optional(),
-  }),
-  alternatives: z.array(stringSetupSchema),
-  explanation: z.string(),
-  warnings: z.array(z.string()),
-  confidenceReason: z.string(),
-});
+## Plans
 
-export type RecommendationOutput = z.infer<typeof recommendationOutputSchema>;
+| | Free | Pro ($4.99 once) | Club ($1.99/mo) |
+| --- | --- | --- | --- |
+| Rackets in bag | 3 | Unlimited | Unlimited |
+| Restring history per racket | Latest 3 | Full | Full |
+| Stringer search results | Top 3 | All | All |
+| Restring reminders | ✓ | ✓ | ✓ |
+| AI technician chat | | | ✓ |
+
+## Reminders
+
+Each racket's interval is worked out from hours played per week and the string type (polyester ≈ 20 playing hours, softer strings ≈ 40), or set by the player. Reminders show in the app, export to any calendar as `.ics`, and are emailed when `RESEND_API_KEY` is set. The production server checks every 6 hours; an external cron can call `POST /api/cron/reminders` with `Authorization: Bearer $CRON_SECRET`.
