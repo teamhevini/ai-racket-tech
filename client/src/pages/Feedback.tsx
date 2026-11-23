@@ -144,7 +144,7 @@ export default function Feedback() {
           </Field>
         </Card>
 
-        <div className="sticky bottom-24 pt-2 md:bottom-6">
+        <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] pt-2 md:bottom-6">
           <Button type="submit" size="lg" className="w-full" disabled={!hasAny} loading={submit.isPending}>
             Send feedback
           </Button>

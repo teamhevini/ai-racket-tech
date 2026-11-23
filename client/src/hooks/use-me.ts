@@ -24,6 +24,15 @@ export function useMe() {
   };
 }
 
+/** After sign-out or account deletion: drop every cached query so nothing from the old account lingers. */
+export function useClearSession() {
+  const qc = useQueryClient();
+  return () => {
+    qc.clear();
+    qc.setQueryData(["/api/auth/me"], guest);
+  };
+}
+
 /** Call after login, logout, signup or a plan change. */
 export function useRefreshMe() {
   const qc = useQueryClient();

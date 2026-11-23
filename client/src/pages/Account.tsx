@@ -10,7 +10,7 @@ import { Badge, Card, EmptyState, Skeleton } from "@/components/ui/surface";
 import { ConfirmSheet } from "@/components/ui/sheet";
 import { api } from "@/lib/api";
 import type { HistoryRun, Me, Profile } from "@/lib/types";
-import { useMe, useRefreshMe } from "@/hooks/use-me";
+import { useClearSession, useMe, useRefreshMe } from "@/hooks/use-me";
 import { useTheme } from "@/hooks/use-theme";
 import { formatDate, formatMonth } from "@/lib/format";
 import { PLANS, FREE_RACKET_LIMIT } from "@shared/tiers";
@@ -231,7 +231,10 @@ function NotificationsTab({ profile }: { profile: Profile }) {
   const toggle = useMutation({
     mutationFn: (reminderEnabled: boolean) => api("PATCH", "/api/account/notifications", { reminderEnabled }),
     onMutate: (v) => qc.setQueryData<Profile>(profileKey, (p) => (p ? { ...p, reminderEnabled: v } : p)),
-    onSuccess: (_d, v) => toast.success(v ? "Reminder emails on" : "Reminder emails off"),
+    onSuccess: (_d, v) => {
+      toast.success(v ? "Reminder emails on" : "Reminder emails off");
+      qc.invalidateQueries({ queryKey: ["/api/bag"] });
+    },
     onError: (e) => {
       toast.error(errMsg(e));
       qc.invalidateQueries({ queryKey: profileKey });
@@ -279,6 +282,7 @@ function HistoryTab() {
     onSuccess: () => {
       toast.success("Removed from history");
       qc.invalidateQueries({ queryKey: ["/api/account/recommendations"] });
+      qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith("/api/bag") });
     },
     onError: (e) => toast.error(errMsg(e)),
   });
@@ -326,7 +330,7 @@ function HistoryTab() {
 
 function DataTab() {
   const [, navigate] = useLocation();
-  const refreshMe = useRefreshMe();
+  const clearSession = useClearSession();
   const [open, setOpen] = React.useState(false);
   const [typed, setTyped] = React.useState("");
   const del = useMutation({
@@ -336,11 +340,14 @@ function DataTab() {
       const a = document.createElement("a");
       a.href = url;
       a.download = "10is-data-export.json";
+      // Attached and revoked later so Safari doesn't cancel the user's only copy.
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
       toast.success("Your account has been deleted", { description: "A copy of your data was downloaded." });
-      await refreshMe();
-      navigate("/");
+      navigate("/", { replace: true });
+      clearSession();
     },
     onError: (e) => toast.error(errMsg(e)),
   });
@@ -388,7 +395,7 @@ export default function Account() {
   const { me, signedIn, loading } = useMe();
   const [, navigate] = useLocation();
   const search = useSearch();
-  const refreshMe = useRefreshMe();
+  const clearSession = useClearSession();
   const { theme, toggle } = useTheme();
   const tabParam = new URLSearchParams(search).get("tab") as TabId | null;
   const tab: TabId = TABS.some((t) => t.id === tabParam) ? (tabParam as TabId) : "profile";
@@ -413,9 +420,10 @@ export default function Account() {
 
   async function signOut() {
     await api("POST", "/api/auth/logout").catch(() => undefined);
-    await refreshMe();
+    // Leave the page first so the signed-out redirect to /login never fires.
+    navigate("/", { replace: true });
+    clearSession();
     toast.success("Signed out");
-    navigate("/");
   }
 
   if (loading || !signedIn || profile.isLoading) {

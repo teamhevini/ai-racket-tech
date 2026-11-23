@@ -22,13 +22,42 @@ const GREETING: ChatMessage = {
 
 const SUGGESTIONS = ["Is 52 lbs too tight for poly?", "Best string for tennis elbow?", "How often should I restring?"];
 
-const HIDDEN_ON = ["/login", "/signup", "/payment-success"];
+// Also hidden where a full-width action bar sits at thumb height.
+const HIDDEN_ON = ["/login", "/signup", "/payment-success", "/setup", "/feedback"];
 
 /** Floating AI technician. Club members chat live; everyone else sees what Club unlocks. */
 export function ChatBot() {
   const [location] = useLocation();
   const { ent, loading } = useMe();
   const [open, setOpen] = React.useState(false);
+  const chat = useChat();
+  const fabRef = React.useRef<HTMLButtonElement>(null);
+  const panelRef = React.useRef<HTMLElement>(null);
+  const wasOpen = React.useRef(false);
+
+  // Give focus back to the chat button when the panel closes.
+  React.useEffect(() => {
+    if (wasOpen.current && !open) requestAnimationFrame(() => fabRef.current?.focus());
+    wasOpen.current = open;
+  }, [open]);
+
+  // Keep Tab inside the open panel.
+  function trapFocus(e: React.KeyboardEvent) {
+    if (e.key !== "Tab" || !panelRef.current) return;
+    const items = panelRef.current.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 
   React.useEffect(() => {
     if (!open) return;
@@ -45,6 +74,7 @@ export function ChatBot() {
         {!open && (
           <motion.button
             key="fab"
+            ref={fabRef}
             initial={{ scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.6, opacity: 0 }}
@@ -52,7 +82,7 @@ export function ChatBot() {
             onClick={() => setOpen(true)}
             aria-label="Ask the AI racket technician"
             className={cn(
-              "fixed bottom-24 right-4 z-40 size-12 place-items-center rounded-full bg-ink text-bg shadow-lift md:bottom-6 md:right-6 md:grid md:size-14",
+              "fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-40 size-12 place-items-center rounded-full bg-ink text-bg shadow-lift md:bottom-6 md:right-6 md:grid md:size-14",
               // On phones the button only shows for Club members, so it never covers content for everyone else.
               ent.chat ? "grid" : "hidden",
             )}
@@ -76,8 +106,11 @@ export function ChatBot() {
             />
             <motion.section
               key="panel"
+              ref={panelRef}
               role="dialog"
+              aria-modal="true"
               aria-label="AI racket technician"
+              onKeyDown={trapFocus}
               initial={{ y: 40, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
@@ -102,7 +135,7 @@ export function ChatBot() {
                   <X />
                 </Button>
               </header>
-              {ent.chat ? <ChatPanel /> : <LockedPanel onNavigate={() => setOpen(false)} />}
+              {ent.chat ? <ChatPanel chat={chat} /> : <LockedPanel onNavigate={() => setOpen(false)} />}
             </motion.section>
           </>
         )}
@@ -128,11 +161,92 @@ function LockedPanel({ onNavigate }: { onNavigate: () => void }) {
   );
 }
 
-function ChatPanel() {
+function useChat() {
   const [messages, setMessages] = React.useState<ChatMessage[]>([GREETING]);
-  const [input, setInput] = React.useState("");
   const [streaming, setStreaming] = React.useState(false);
   const convId = React.useRef<number | null>(null);
+  const abort = React.useRef<AbortController | null>(null);
+
+  // Stop any in-flight reply if the whole chat goes away (e.g. sign-out).
+  React.useEffect(() => () => abort.current?.abort(), []);
+
+  function patchLast(fn: (m: ChatMessage) => ChatMessage) {
+    setMessages((prev) => [...prev.slice(0, -1), fn(prev[prev.length - 1])]);
+  }
+
+  async function send(text: string) {
+    const content = text.trim();
+    if (!content || streaming) return;
+    setMessages((prev) => [...prev, { role: "user", content }, { role: "assistant", content: "" }]);
+    setStreaming(true);
+    const controller = new AbortController();
+    abort.current = controller;
+    try {
+      if (!convId.current) {
+        const conv = await api<{ id: number }>("POST", "/api/conversations", { title: content.slice(0, 60) });
+        convId.current = conv.id;
+      }
+      const res = await fetch(`/api/conversations/${convId.current}/messages`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+        signal: controller.signal,
+      });
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.message ?? "The technician couldn't reply. Please try again.");
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let got = false;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+        for (const evt of events) {
+          const line = evt.trim();
+          if (!line.startsWith("data:")) continue;
+          const data = JSON.parse(line.slice(5));
+          if (data.content) {
+            got = true;
+            patchLast((m) => ({ ...m, content: m.content + data.content }));
+          }
+          if (data.error) throw new Error(data.error);
+        }
+      }
+      // A dropped connection or empty reply must not leave typing dots forever.
+      if (!got) throw new Error("No reply came through — please try again.");
+    } catch (err) {
+      if (controller.signal.aborted) return;
+      patchLast((m) => ({
+        ...m,
+        error: true,
+        content: m.content || (err instanceof Error ? err.message : "Something went wrong."),
+      }));
+    } finally {
+      if (abort.current === controller) abort.current = null;
+      setStreaming(false);
+    }
+  }
+
+  function reset() {
+    abort.current?.abort();
+    convId.current = null;
+    setMessages([GREETING]);
+  }
+
+  return { messages, streaming, send, reset };
+}
+
+type Chat = ReturnType<typeof useChat>;
+
+function ChatPanel({ chat }: { chat: Chat }) {
+  const { messages, streaming, reset } = chat;
+  const [input, setInput] = React.useState("");
   const endRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -144,62 +258,10 @@ function ChatPanel() {
     inputRef.current?.focus({ preventScroll: true });
   }, []);
 
-  function patchLast(fn: (m: ChatMessage) => ChatMessage) {
-    setMessages((prev) => [...prev.slice(0, -1), fn(prev[prev.length - 1])]);
-  }
-
-  async function send(text: string) {
-    const content = text.trim();
-    if (!content || streaming) return;
+  function send(text: string) {
+    if (!text.trim() || streaming) return;
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content }, { role: "assistant", content: "" }]);
-    setStreaming(true);
-    try {
-      if (!convId.current) {
-        const conv = await api<{ id: number }>("POST", "/api/conversations", { title: content.slice(0, 60) });
-        convId.current = conv.id;
-      }
-      const res = await fetch(`/api/conversations/${convId.current}/messages`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-      });
-      if (!res.ok || !res.body) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.message ?? "The technician couldn't reply. Please try again.");
-      }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
-        buffer = events.pop() ?? "";
-        for (const evt of events) {
-          const line = evt.trim();
-          if (!line.startsWith("data:")) continue;
-          const data = JSON.parse(line.slice(5));
-          if (data.content) patchLast((m) => ({ ...m, content: m.content + data.content }));
-          if (data.error) throw new Error(data.error);
-        }
-      }
-    } catch (err) {
-      patchLast((m) => ({
-        ...m,
-        error: true,
-        content: m.content || (err instanceof Error ? err.message : "Something went wrong."),
-      }));
-    } finally {
-      setStreaming(false);
-    }
-  }
-
-  function reset() {
-    convId.current = null;
-    setMessages([GREETING]);
+    void chat.send(text);
   }
 
   return (

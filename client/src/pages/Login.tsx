@@ -12,7 +12,7 @@ import { useRefreshMe } from "@/hooks/use-me";
 /** Only allow same-site relative redirects. */
 export function safeNext(search: string, fallback = "/") {
   const next = new URLSearchParams(search).get("next");
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : fallback;
+  return next && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : fallback;
 }
 
 export function PasswordInput(props: React.InputHTMLAttributes<HTMLInputElement>) {

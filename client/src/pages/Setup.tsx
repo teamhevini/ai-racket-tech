@@ -209,9 +209,20 @@ export default function Setup() {
   }
 
   // Single-choice steps advance on tap — one thumb, no extra "next" press.
+  // A double tap must not skip the next question: only advance from the step that was tapped.
+  const advanceTimer = React.useRef<number | null>(null);
+  React.useEffect(() => () => {
+    if (advanceTimer.current) window.clearTimeout(advanceTimer.current);
+  }, []);
   function pickAndAdvance(patch: Partial<State>) {
     setState((s) => ({ ...s, ...patch }));
-    window.setTimeout(() => go(1), 180);
+    const from = step;
+    if (advanceTimer.current) window.clearTimeout(advanceTimer.current);
+    advanceTimer.current = window.setTimeout(() => {
+      advanceTimer.current = null;
+      setDir(1);
+      setStep((s) => (s === from ? Math.min(STEPS.length - 1, s + 1) : s));
+    }, 180);
   }
 
   if (submit.isPending) return <Thinking label={state.racketLabel} />;
@@ -272,7 +283,7 @@ export default function Setup() {
       )}
 
       {/* Sticky, thumb-height controls (sit above the mobile tab bar) */}
-      <div className="sticky bottom-24 z-10 mt-8 md:bottom-6">
+      <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 mt-8 md:bottom-6">
         <div className="flex items-center gap-3 rounded-full bg-bg/80 p-1.5 backdrop-blur-xl">
           <Button variant="secondary" size="icon" onClick={() => go(-1)} disabled={step === 0} aria-label="Previous question">
             <ArrowLeft />

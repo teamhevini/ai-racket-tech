@@ -24,9 +24,10 @@ const CONFIDENCE: Record<string, { label: string; tone: "grass" | "clay" | "neut
   estimated: { label: "Estimated", tone: "neutral", body: "We didn't have your racket's specs, so this is a well-reasoned estimate." },
 };
 
+/** First number in "52", "52 lbs", "52-54" or "50/52" — never glue the digits together. */
 const numericTension = (t: string | undefined) => {
-  const n = parseFloat(String(t ?? "").replace(/[^\d.]/g, ""));
-  return Number.isFinite(n) ? String(n) : "";
+  const m = String(t ?? "").match(/\d+(\.\d+)?/);
+  return m ? m[0] : "";
 };
 
 export default function RecommendationPage() {

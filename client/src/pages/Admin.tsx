@@ -50,7 +50,8 @@ export default function Admin() {
   const list = (users.data ?? []).filter((u) => `${u.email} ${u.firstName ?? ""} ${u.lastName ?? ""}`.toLowerCase().includes(q.toLowerCase()));
   const counts = (users.data ?? []).reduce<Record<string, number>>((acc, u) => ({ ...acc, [u.tier]: (acc[u.tier] ?? 0) + 1 }), {});
 
-  const TierSelect = ({ u }: { u: AdminUser }) => (
+  // Plain render helpers (not components) so React doesn't remount them — keyboard focus survives updates.
+  const tierSelect = (u: AdminUser) => (
     <Select
       aria-label={`Plan for ${u.email}`}
       value={u.tier}
@@ -62,7 +63,7 @@ export default function Admin() {
       <option value="club">Club</option>
     </Select>
   );
-  const AdminToggle = ({ u }: { u: AdminUser }) => (
+  const adminToggle = (u: AdminUser) => (
     <Button
       size="sm"
       variant={u.isAdmin ? "ink" : "outline"}
@@ -93,8 +94,8 @@ export default function Admin() {
               {!u.hasPassword && " · no password"}
             </p>
             <div className="mt-3 flex items-center gap-2">
-              <TierSelect u={u} />
-              <AdminToggle u={u} />
+              {tierSelect(u)}
+              {adminToggle(u)}
             </div>
           </Card>
         ))}
@@ -122,8 +123,8 @@ export default function Admin() {
                   </p>
                 </td>
                 <td className="px-4 py-3 text-muted">{formatDate(u.createdAt)}</td>
-                <td className="px-4 py-3"><TierSelect u={u} /></td>
-                <td className="px-4 py-3"><AdminToggle u={u} /></td>
+                <td className="px-4 py-3">{tierSelect(u)}</td>
+                <td className="px-4 py-3">{adminToggle(u)}</td>
               </tr>
             ))}
           </tbody>
