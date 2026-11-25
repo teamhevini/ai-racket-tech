@@ -577,6 +577,24 @@ export const stringSignals = pgTable(
   (t) => [index("string_signals_string_idx").on(t.stringId, t.kind)],
 );
 
+// ─── Invites: a player invites their own stringer to take bookings on 10IS ──
+// Sent from the player's phone (share sheet / text), never emailed by 10IS.
+export const stringerInvites = pgTable(
+  "stringer_invites",
+  {
+    id: serial("id").primaryKey(),
+    code: text("code").notNull().unique(),
+    inviterUserId: integer("inviter_user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+    savedStringerId: integer("saved_stringer_id").references(() => savedStringers.id, { onDelete: "cascade" }).notNull().unique(),
+    acceptedShopId: integer("accepted_shop_id").references(() => shops.id, { onDelete: "set null" }),
+    acceptedAt: timestamp("accepted_at"),
+    opens: integer("opens").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [index("stringer_invites_inviter_idx").on(t.inviterUserId)],
+);
+export type StringerInvite = typeof stringerInvites.$inferSelect;
+
 // ─── B2B input schemas ──────────────────────────────────────────────────────
 const slugText = z
   .string()
@@ -605,6 +623,8 @@ export const shopInputSchema = z.object({
   rushCents: cents(0, 20000).optional(),
   turnaroundHours: z.coerce.number().int().min(1).max(336).optional(),
   acceptingBookings: z.boolean().optional(),
+  /** Set when the stringer arrived through a customer's invite link. */
+  inviteCode: z.string().trim().max(40).optional(),
 });
 export type ShopInput = z.input<typeof shopInputSchema>;
 

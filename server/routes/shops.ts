@@ -12,6 +12,7 @@ import {
   savedStringers,
   shopInputSchema,
   shops,
+  stringerInvites,
   stringJobs,
   strings,
   brands,
@@ -22,7 +23,7 @@ import {
 } from "@shared/schema";
 import { FREE_SHOP_MONTHLY_BOOKINGS, SAMPLE_PLATFORM_FEE_PCT, SHOP_PLANS } from "@shared/tiers";
 import { reminderState } from "@shared/reminders";
-import { asyncHandler, currentUser, requireAuth } from "../auth";
+import { asyncHandler, currentUser, rateLimit, requireAuth } from "../auth";
 import {
   NEXT_STATUS,
   bookingsThisMonth,
@@ -38,6 +39,7 @@ import {
   writeJobToBag,
 } from "../b2b";
 import { getStripe } from "./billing";
+import { newCode } from "./marketplace";
 import { parseBody, parseId } from "./util";
 
 export const shopsRouter = Router();
@@ -293,6 +295,7 @@ shopsRouter.get(
     const racketId = parseId(String(req.query.racketId ?? ""));
     let lastShop: Shop | undefined;
     let prefill: Record<string, unknown> | null = null;
+    let invitable: { savedStringerId: number; name: string } | null = null;
     if (racketId) {
       const [job] = await db
         .select({ job: stringJobs, stringer: savedStringers })
@@ -311,9 +314,11 @@ shopsRouter.get(
           tensionCrosses: job.job.tensionCrosses,
         };
         if (job.stringer?.shopId) [lastShop] = await db.select().from(shops).where(eq(shops.id, job.stringer.shopId));
+        // Their usual stringer isn't on 10IS yet: offer an invite instead of a stranger's shop.
+        else if (job.stringer) invitable = { savedStringerId: job.stringer.id, name: job.stringer.stringerName };
       }
     }
-    if (!lastShop) {
+    if (!lastShop && !invitable) {
       const [b] = await db
         .select({ shop: shops })
         .from(bookings)
@@ -323,7 +328,7 @@ shopsRouter.get(
         .limit(1);
       lastShop = b?.shop;
     }
-    res.json({ shop: lastShop ? publicShop(lastShop) : null, prefill });
+    res.json({ shop: lastShop ? publicShop(lastShop) : null, prefill, invitable });
   }),
 );
 
@@ -397,11 +402,13 @@ shopsRouter.post(
       const [taken] = await db.select({ id: shops.id }).from(shops).where(eq(shops.slug, data.slug));
       if (taken) return res.status(409).json({ message: "That address is taken.", field: "slug" });
     }
-    const slug = data.slug ?? (await uniqueSlug(shops, data.name));
+    const { inviteCode, ...fields } = data;
+    const slug = fields.slug ?? (await uniqueSlug(shops, fields.name));
     const [shop] = await db
       .insert(shops)
-      .values({ ...data, slug, ownerUserId: user.id, email: data.email ?? user.email })
+      .values({ ...fields, slug, ownerUserId: user.id, email: fields.email ?? user.email })
       .returning();
+    if (inviteCode) await acceptInvite(inviteCode, shop, user.id);
     res.status(201).json(shop);
   }),
 );
@@ -886,3 +893,66 @@ shopsRouter.post(
   }),
 );
 
+
+// ═══ Invite your stringer ═══════════════════════════════════════════════════
+// The player shares a link from their own phone. 10IS never contacts the stringer.
+
+const inviteLimit = rateLimit({ windowMs: 60 * 60_000, max: 20, key: (req) => `inv${req.user?.id}` });
+const firstNameOf = (u: { firstName: string | null } | undefined) => (u?.firstName?.trim() || "One of your customers").split(/\s+/)[0];
+
+shopsRouter.post(
+  "/api/stringers/saved/:id/invite",
+  requireAuth,
+  inviteLimit,
+  asyncHandler(async (req, res) => {
+    const user = currentUser(req);
+    const id = parseId(req.params.id);
+    const [stringer] = id ? await db.select().from(savedStringers).where(and(eq(savedStringers.id, id), eq(savedStringers.userId, user.id))) : [];
+    if (!stringer) return res.status(404).json({ message: "Stringer not found" });
+    if (stringer.shopId) return res.status(409).json({ message: `${stringer.stringerName} already takes bookings on 10IS.` });
+    let [invite] = await db.select().from(stringerInvites).where(eq(stringerInvites.savedStringerId, stringer.id));
+    if (!invite) [invite] = await db.insert(stringerInvites).values({ code: newCode(), inviterUserId: user.id, savedStringerId: stringer.id }).returning();
+    const url = `${appUrl(req)}/shop/new?invite=${invite.code}`;
+    const who = user.firstName?.trim() || "I";
+    res.json({
+      code: invite.code,
+      url,
+      stringerName: stringer.stringerName,
+      phone: stringer.phone,
+      message: `Hi ${stringer.stringerName.split(/\s+/)[0]}, ${who === "I" ? "I" : `it's ${who}. I`} track my racket and restrings in the 10IS app. You can take bookings from me there for free, with a queue that shows me when it's ready: ${url}`,
+    });
+  }),
+);
+
+/** What a stringer sees when they open an invite link. Only the inviter's first name is shown. */
+shopsRouter.get(
+  "/api/invites/:code",
+  asyncHandler(async (req, res) => {
+    const code = String(req.params.code).slice(0, 40);
+    const [row] = await db
+      .select({ invite: stringerInvites, stringer: savedStringers })
+      .from(stringerInvites)
+      .innerJoin(savedStringers, eq(savedStringers.id, stringerInvites.savedStringerId))
+      .where(eq(stringerInvites.code, code));
+    if (!row) return res.status(404).json({ message: "This invite link isn't valid." });
+    if (!row.invite.acceptedAt) await db.update(stringerInvites).set({ opens: row.invite.opens + 1 }).where(eq(stringerInvites.id, row.invite.id));
+    const inviter = (await usersByIds([row.invite.inviterUserId])).get(row.invite.inviterUserId);
+    res.json({
+      inviterFirstName: firstNameOf(inviter),
+      stringerName: row.stringer.stringerName,
+      city: row.stringer.stringerAddress?.split(",").map((s) => s.trim()).filter(Boolean).at(-1) ?? null,
+      accepted: !!row.invite.acceptedAt,
+    });
+  }),
+);
+
+/** Link the new shop to the customer who invited it, so their next "Book a restring" goes straight there. */
+async function acceptInvite(code: string, shop: Shop, ownerUserId: number) {
+  const [invite] = await db.select().from(stringerInvites).where(eq(stringerInvites.code, code));
+  if (!invite || invite.acceptedAt || invite.inviterUserId === ownerUserId) return;
+  await db.update(stringerInvites).set({ acceptedShopId: shop.id, acceptedAt: new Date() }).where(eq(stringerInvites.id, invite.id));
+  await db
+    .update(savedStringers)
+    .set({ shopId: shop.id })
+    .where(and(eq(savedStringers.id, invite.savedStringerId), eq(savedStringers.userId, invite.inviterUserId)));
+}
