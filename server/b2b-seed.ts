@@ -238,8 +238,8 @@ export async function seedDemo(): Promise<void> {
   await pastBooking({ shop: baseline, user: player, racket: aero, name: "Maya Okafor", racketLabel: "Match racket · Babolat Pure Aero 98", string: hyperG, tension: 50, at: daysAgo(50), rating: 4, stringerId: playerStringer.id });
   await pastBooking({ shop: baseline, user: player, racket: aero, name: "Maya Okafor", racketLabel: "Match racket · Babolat Pure Aero 98", string: ridgeSoft, tension: 49, at: daysAgo(24), rating: 5, stringerId: playerStringer.id, sampleProgramId: program.id });
   await pastBooking({ shop: baseline, user: player, racket: blade, name: "Maya Okafor", racketLabel: "Backup · Wilson Blade 98 v9", string: hyperG, tension: 51, at: daysAgo(40), rating: 4, stringerId: playerStringer.id });
-  // Sam (free) last strung 70 days ago at Net Cord — the reminder is overdue.
-  await pastBooking({ shop: netcord, user: free, racket: freeRacket, name: "Sam Rivera", racketLabel: "My racket · Head Speed MP", string: synth, tension: 55, at: daysAgo(70), rating: 4, stringerId: freeStringer.id });
+  // Sam (free) last strung ~4 months ago at Net Cord — the reminder is overdue.
+  await pastBooking({ shop: netcord, user: free, racket: freeRacket, name: "Sam Rivera", racketLabel: "My racket · Head Speed MP", string: synth, tension: 55, at: daysAgo(118), rating: 4, stringerId: freeStringer.id });
 
   // Baseline's live queue
   const now = Date.now();
@@ -319,11 +319,11 @@ export async function seedDemo(): Promise<void> {
   const frames = ["Babolat", "Wilson", "Head", "Yonex", "Arcfield", "Arcfield", "Arcfield", "Tecnifibre"];
   const weighted: TennisString[] = [];
   for (const s of allStrings) {
-    const w = s.brandName === "Northline" ? 3 : ["Hyper-G", "RPM Blast", "ALU Power", "X-One Biphase", "Lynx Tour", "NXT"].includes(s.model) ? 5 : 2;
+    const w = s.brandName === "Northline" ? 1 : ["Hyper-G", "RPM Blast", "ALU Power", "X-One Biphase", "Lynx Tour", "NXT"].includes(s.model) ? 5 : 2;
     for (let k = 0; k < w; k++) weighted.push(s);
   }
   const signals: Array<typeof stringSignals.$inferInsert> = [];
-  for (let p = 0; p < 420; p++) {
+  for (let p = 0; p < 520; p++) {
     const hash = playerHash(`demo-${p}`);
     const level = pick(levels);
     const playstyle = pick(styles);
@@ -335,7 +335,7 @@ export async function seedDemo(): Promise<void> {
     for (let k = 0; k < sessions && t > 0; k++) {
       const at = daysAgo(t);
       // Northline grows over the window (launch effect).
-      if (rand() < 0.12 * (1 - t / 90)) current = pick([ridgeSoft, ridgeTour, cloud]);
+      if (rand() < 0.06 * (1 - t / 90)) current = pick([ridgeSoft, ridgeTour, cloud]);
       signals.push({ stringId: current.id, kind: "recommended", playerHash: hash, level, playstyle, region, racketBrand, createdAt: at });
       if (rand() < 0.5) signals.push({ stringId: pick(weighted).id, kind: "alternative", playerHash: hash, level, playstyle, region, racketBrand, createdAt: at });
       if (rand() < 0.3) signals.push({ stringId: current.id, kind: "affiliate_click", playerHash: hash, createdAt: at });
@@ -359,7 +359,7 @@ export async function seedDemo(): Promise<void> {
   for (let i = 0; i < softRuns.length; i++) {
     const at = daysAgo(Math.floor(rand() * 20));
     await db.insert(campaignEvents).values({ campaignId: softCampaign.id, runId: softRuns[i].id, kind: "impression", fitScore: 72 + Math.floor(rand() * 18), createdAt: at });
-    if (rand() < 0.18) await db.insert(campaignEvents).values({ campaignId: softCampaign.id, runId: softRuns[i].id, kind: "click", costCents: softCampaign.cpcCents, fitScore: 80, createdAt: at });
+    if (rand() < 0.08) await db.insert(campaignEvents).values({ campaignId: softCampaign.id, runId: softRuns[i].id, kind: "click", costCents: softCampaign.cpcCents, fitScore: 80, createdAt: at });
   }
   void offers;
   void and;

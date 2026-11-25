@@ -530,9 +530,9 @@ function Stepper({ label, value, onChange }: { label: string; value: number; onC
         >
           <Minus className="size-5" />
         </button>
-        <p className="min-w-0" aria-live="polite">
-          <span className="font-mono text-3xl font-semibold tabular">{value}</span>
-          <span className="ml-0.5 text-xs text-muted">lb</span>
+        <p className="min-w-0 leading-none" aria-live="polite">
+          <span className="block font-mono text-3xl font-semibold tabular">{value}</span>
+          <span className="mt-1 block text-2xs uppercase tracking-wide text-muted">lbs</span>
         </p>
         <button
           type="button"

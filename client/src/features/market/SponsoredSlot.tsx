@@ -49,9 +49,9 @@ export function SponsoredSlot({ runId }: { runId: number }) {
       <h3 className="display mt-4 text-2xl leading-tight sm:text-3xl">{p.headline}</h3>
       <p className="mt-2 text-sm font-semibold">
         {p.string.brandName} {p.string.model}
-        <span className="font-normal capitalize text-muted">
+        <span className="font-normal text-muted">
           {" "}
-          · {p.string.family}
+          · <span className="capitalize">{p.string.family}</span>
           {p.string.gauges ? ` · ${p.string.gauges}` : ""}
           {p.string.setPriceCents ? ` · ${cents(p.string.setPriceCents)} a set` : ""}
         </span>
