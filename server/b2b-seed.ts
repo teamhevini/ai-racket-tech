@@ -78,7 +78,7 @@ async function demoUser(email: string, firstName: string, lastName: string, tier
   return u;
 }
 
-const DEMO_PLAYERS = 520;
+const DEMO_PLAYERS = 1400;
 
 /**
  * Preview only: remove everything the demo seed created so it can be seeded fresh.
