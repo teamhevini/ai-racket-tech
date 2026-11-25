@@ -80,7 +80,7 @@ function LockedInsights({ brand }: { brand: BrandJson }) {
           </span>
           <h2 className="display mt-5 text-3xl leading-tight sm:text-4xl">See how players choose {brand.kind === "racket" ? "strings for your frames" : "your strings"}</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">
-            Demand, retention and ratings from every setup the 10IS technician writes, anonymised and never below 5 players per group.
+            Demand, retention and ratings from every setup the 10IS technician writes. Pseudonymised, aggregated, and never below 5 players per group.
           </p>
           <ul className="mt-5 space-y-2">
             {plan.features.map((f) => (
@@ -142,24 +142,27 @@ const STAGE_LABEL: Record<string, string> = {
 
 function StringDashboard({ data }: { data: StringInsights }) {
   const weekly = data.weekly;
-  const now = weekly[weekly.length - 1]?.share ?? 0;
-  const then = weekly[0]?.share ?? 0;
-  const delta = Math.round((now - then) * 10) / 10;
+  const shown = weekly.filter((w) => w.share != null);
+  // Compare the latest and earliest weeks that clear the 5-player floor.
+  const now = shown[shown.length - 1]?.share ?? null;
+  const then = shown[0]?.share ?? null;
+  const delta = now != null && then != null && shown.length > 1 ? Math.round((now - then) * 10) / 10 : null;
   const recommended = data.funnel.find((f) => f.stage === "recommended")?.players ?? null;
   const rated = data.ratings.filter((r) => r.avg != null && r.players != null);
   const ratedPlayers = rated.reduce((a, r) => a + (r.players ?? 0), 0);
   const avgRating = ratedPlayers ? rated.reduce((a, r) => a + (r.avg ?? 0) * (r.players ?? 0), 0) / ratedPlayers : null;
   const funnel = data.funnel.filter((f) => f.stage in STAGE_LABEL).map((f) => ({ label: STAGE_LABEL[f.stage], players: f.players }));
-  const totalPicks = weekly.reduce((a, w) => a + w.total, 0);
+  const totalPicks = weekly.reduce((a, w) => a + (w.total ?? 0), 0);
+  const hiddenWeeks = weekly.length - shown.length;
 
   return (
     <div className="space-y-4 sm:space-y-5">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi
-          label="Share of AI picks this week"
-          value={pct(now)}
-          sub={`${delta >= 0 ? "+" : ""}${delta.toFixed(1)} pts vs ${data.windowWeeks} weeks ago`}
-          tone={delta > 0 ? "up" : delta < 0 ? "down" : "flat"}
+          label="Share of AI picks, latest week"
+          value={now == null ? <Kv value={null} /> : pct(now)}
+          sub={delta == null ? SUPPRESSED_NOTE : `${delta >= 0 ? "+" : ""}${delta.toFixed(1)} pts across the window`}
+          tone={delta == null ? "flat" : delta > 0 ? "up" : delta < 0 ? "down" : "flat"}
         />
         <Kpi label="Players recommended" value={<Kv value={recommended} />} sub={`Last ${data.windowWeeks} weeks`} />
         <Kpi
@@ -177,9 +180,13 @@ function StringDashboard({ data }: { data: StringInsights }) {
       <Panel
         eyebrow="Demand"
         title="Share of AI recommendations"
-        description={`How often the technician's primary pick is one of your strings, week by week. ${int(totalPicks)} picks across the category in ${data.windowWeeks} weeks.`}
+        description={`How often the technician's primary pick is one of your strings, week by week.${totalPicks ? ` ${int(totalPicks)} category picks in the weeks shown.` : ""}${hiddenWeeks ? ` ${hiddenWeeks} week${hiddenWeeks === 1 ? "" : "s"} hidden for having fewer than ${data.kAnonymity} players.` : ""}`}
       >
-        {totalPicks === 0 ? <p className="py-10 text-center text-sm text-muted">No recommendations in this window yet.</p> : <ShareAreaChart points={weekly} />}
+        {shown.length === 0 ? (
+          <p className="py-10 text-center text-sm text-muted">Not enough players yet to show a week without risking identifying someone. Each week needs at least {data.kAnonymity}.</p>
+        ) : (
+          <ShareAreaChart points={weekly} />
+        )}
       </Panel>
 
       <div className="grid gap-4 sm:gap-5 lg:grid-cols-5">
@@ -317,7 +324,7 @@ function AnonFootnote({ k }: { k: number }) {
     <div className="flex items-start gap-3 rounded-2xl bg-surface-2/70 p-4 text-xs leading-relaxed text-muted sm:p-5">
       <ShieldCheck className="mt-0.5 size-4 shrink-0 text-grass" aria-hidden />
       <p>
-        Built from anonymised signals only. Players are a keyed hash, never a name, email or account, and no personal data leaves 10IS. Any group with
+        Built from pseudonymised signals only. Players are a keyed hash, never a name, email or account; only aggregates leave 10IS, and free-sample installs and ratings are reported separately under Samples. Any group with
         fewer than {k} distinct players is hidden and shown as "—". Last 12 weeks.
       </p>
     </div>

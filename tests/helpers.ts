@@ -45,16 +45,20 @@ export async function makeShop(opts: { pro?: boolean; name?: string } = {}) {
 }
 
 /** A signed-in brand manager. */
-export async function makeBrand(opts: { kind?: "string" | "racket" | "retailer"; plan?: "free" | "insights" | "partner" } = {}) {
+/** A signed-in brand manager. `verified` simulates 10IS having confirmed the company (admin step). */
+export async function makeBrand(
+  opts: { kind?: "string" | "racket" | "retailer"; plan?: "free" | "insights" | "partner"; verified?: boolean; website?: string } = {},
+) {
   const owner = await signUp();
-  const res = await owner.agent.post("/api/brand").send({ name: `Brand ${Date.now()} ${counter++}`, kind: opts.kind ?? "string" });
+  const res = await owner.agent
+    .post("/api/brand")
+    .send({ name: `Brand ${Date.now()} ${counter++}`, kind: opts.kind ?? "string", website: opts.website ?? null });
   if (res.status !== 201) throw new Error(`brand create failed: ${res.status} ${JSON.stringify(res.body)}`);
-  if (opts.plan && opts.plan !== "free") {
-    const { db } = await import("../server/db");
-    const { brands } = await import("../shared/schema");
-    const { eq } = await import("drizzle-orm");
-    await db.update(brands).set({ plan: opts.plan }).where(eq(brands.id, res.body.id));
-  }
+  const { db } = await import("../server/db");
+  const { brands } = await import("../shared/schema");
+  const { eq } = await import("drizzle-orm");
+  if (opts.plan && opts.plan !== "free") await db.update(brands).set({ plan: opts.plan }).where(eq(brands.id, res.body.id));
+  if (opts.verified) await db.update(brands).set({ claimed: true }).where(eq(brands.id, res.body.id));
   return { ...owner, brand: res.body as { id: number; slug: string; name: string } };
 }
 

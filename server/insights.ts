@@ -4,8 +4,11 @@ import { affiliateClicks, bookings, brands, campaignEvents, campaigns, retailOff
 import { K_ANONYMITY } from "@shared/tiers";
 
 /**
- * Brand insights built only from the anonymised string_signals table. Every
- * group is suppressed unless it contains at least K_ANONYMITY distinct players.
+ * Brand insights built only from the pseudonymised string_signals table. Every
+ * figure (including each week of the demand chart) is suppressed unless it
+ * comes from at least K_ANONYMITY distinct players. Free-sample installs and
+ * ratings are kept out of the organic funnel and ratings; they're reported in
+ * the sample programme results instead.
  */
 
 const WEEKS = 12;
@@ -33,27 +36,41 @@ export async function stringBrandInsights(brand: Brand) {
   // Demand: share of the AI's primary recommendations, week by week.
   const weeks: string[] = [];
   for (let i = WEEKS - 1; i >= 0; i--) weeks.push(weekKey(new Date(Date.now() - i * 7 * 86_400_000)));
-  const weekly = weeks.map((w) => ({ week: w, recommended: 0, total: 0, share: 0 }));
+  const counts = weeks.map(() => ({ recommended: 0, total: 0, mine: new Set<string>(), all: new Set<string>() }));
   const idx = new Map(weeks.map((w, i) => [w, i]));
   for (const s of sigs) {
     if (s.kind !== "recommended") continue;
     const i = idx.get(weekKey(s.createdAt));
     if (i === undefined) continue;
-    weekly[i].total++;
-    if (isMine(s)) weekly[i].recommended++;
+    counts[i].total++;
+    if (s.playerHash) counts[i].all.add(s.playerHash);
+    if (isMine(s)) {
+      counts[i].recommended++;
+      if (s.playerHash) counts[i].mine.add(s.playerHash);
+    }
   }
-  for (const w of weekly) w.share = w.total ? Math.round((w.recommended / w.total) * 1000) / 10 : 0;
+  // A week is shown only when both your picks and the category come from at least K players.
+  const weekly = weeks.map((week, i) => {
+    const c = counts[i];
+    const ok = c.mine.size >= K_ANONYMITY && c.all.size >= K_ANONYMITY;
+    return {
+      week,
+      recommended: ok ? c.recommended : null,
+      total: ok ? c.total : null,
+      share: ok && c.total ? Math.round((c.recommended / c.total) * 1000) / 10 : null,
+    };
+  });
 
   // Funnel by distinct players.
   const stages = ["recommended", "alternative", "affiliate_click", "booked", "installed", "rated"] as const;
   const funnelSets = Object.fromEntries(stages.map((k) => [k, new Set<string>()])) as Record<(typeof stages)[number], Set<string>>;
-  for (const s of sigs) if (isMine(s) && s.playerHash && (stages as readonly string[]).includes(s.kind)) funnelSets[s.kind as (typeof stages)[number]].add(s.playerHash);
+  for (const s of sigs) if (isMine(s) && !s.sampled && s.playerHash && (stages as readonly string[]).includes(s.kind)) funnelSets[s.kind as (typeof stages)[number]].add(s.playerHash);
   const funnel = stages.map((k) => ({ stage: k, players: funnelSets[k].size >= K_ANONYMITY ? funnelSets[k].size : null }));
 
   // Ratings per string.
   const ratingMap = new Map<number, { sum: number; n: number; players: Set<string> }>();
   for (const s of sigs) {
-    if (s.kind !== "rated" || !s.rating || !isMine(s)) continue;
+    if (s.kind !== "rated" || !s.rating || !isMine(s) || s.sampled) continue;
     const r = ratingMap.get(s.stringId) ?? { sum: 0, n: 0, players: new Set() };
     r.sum += s.rating;
     r.n++;

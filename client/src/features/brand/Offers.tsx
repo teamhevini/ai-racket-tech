@@ -9,11 +9,11 @@ import { Badge, Card, EmptyState, Skeleton } from "@/components/ui/surface";
 import { useDebounce } from "@/hooks/use-debounce";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { dollars, errMsg, toCents, type CatalogString, type OfferRow } from "./shared";
+import { dollars, errMsg, toCents, VerifyNotice, type BrandJson, type CatalogString, type OfferRow } from "./shared";
 
 const offersKey = ["/api/brand/offers"] as const;
 
-export function OffersTab() {
+export function OffersTab({ brand }: { brand: BrandJson }) {
   const q = useQuery<OfferRow[]>({ queryKey: offersKey });
   const [sheet, setSheet] = React.useState<OfferRow | "new" | null>(null);
   const [removing, setRemoving] = React.useState<OfferRow | null>(null);
@@ -41,6 +41,11 @@ export function OffersTab() {
           </Button>
         )}
       </div>
+
+      <VerifyNotice brand={brand} what="Offers" />
+      <p className="text-sm text-muted">
+        Product links must be on your own website{brand.website ? ` (${brand.website})` : ""}. 10IS sends players there, so we don't link anywhere else.
+      </p>
 
       <Card className="flex gap-4 p-5 sm:p-6">
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-hard-soft text-hard">

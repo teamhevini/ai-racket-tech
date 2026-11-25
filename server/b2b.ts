@@ -86,7 +86,7 @@ export async function matchCatalog(texts: string[]): Promise<TennisString[]> {
   return [...out.values()];
 }
 
-// ─── Anonymised signals ─────────────────────────────────────────────────────
+// ─── Pseudonymised signals ─────────────────────────────────────────────────────
 
 const signalKey = () => process.env.SESSION_SECRET || "dev-secret-change-in-prod";
 
@@ -105,6 +105,7 @@ export interface SignalInput {
   region?: string | null;
   rating?: number | null;
   racketBrand?: string | null;
+  sampled?: boolean;
   createdAt?: Date;
 }
 
@@ -121,6 +122,7 @@ export async function recordSignals(items: SignalInput[]): Promise<void> {
         region: s.region ?? null,
         rating: s.rating ?? null,
         racketBrand: s.racketBrand ?? null,
+        sampled: !!s.sampled,
         ...(s.createdAt ? { createdAt: s.createdAt } : {}),
       })),
     );

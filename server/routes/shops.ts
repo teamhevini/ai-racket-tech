@@ -371,7 +371,7 @@ shopsRouter.post(
     const first = row.booking.rating == null;
     const [b] = await db.update(bookings).set({ rating: data.rating, updatedAt: new Date() }).where(eq(bookings.id, row.booking.id)).returning();
     if (b.stringJobId) await db.update(stringJobs).set({ rating: data.rating }).where(and(eq(stringJobs.id, b.stringJobId), eq(stringJobs.userId, user.id)));
-    if (first && b.stringId) await recordSignals([{ stringId: b.stringId, kind: "rated", rating: data.rating, player: user.id, region: row.shop.city }]);
+    if (first && b.stringId) await recordSignals([{ stringId: b.stringId, kind: "rated", rating: data.rating, player: user.id, region: row.shop.city, sampled: !!b.sampleProgramId }]);
     res.json(playerView(b, row.shop));
   }),
 );
@@ -573,7 +573,7 @@ shopsRouter.post(
     let stringJobId = b.stringJobId;
     if (data.status === "ready" && !stringJobId) {
       stringJobId = await writeJobToBag(b, shop);
-      if (b.stringId) await recordSignals([{ stringId: b.stringId, kind: "installed", player: b.playerUserId ?? `walkin:${shop.id}:${b.customerName}`, region: shop.city }]);
+      if (b.stringId) await recordSignals([{ stringId: b.stringId, kind: "installed", player: b.playerUserId ?? `walkin:${shop.id}:${b.customerName}`, region: shop.city, sampled: !!b.sampleProgramId }]);
     }
     const [updated] = await db
       .update(bookings)

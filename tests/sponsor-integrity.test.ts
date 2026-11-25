@@ -10,7 +10,7 @@ const spinPlayer = { racketId: null, level: "advanced", playstyle: "baseliner" a
 
 /** A brand with one well-scored poly string (scores are set as 10IS would, not by the brand) and a live campaign. */
 async function sponsorWithPoly(opts: { cpcCents?: number; model?: string; budgetCents?: number; stiffness?: number } = {}) {
-  const b = await makeBrand();
+  const b = await makeBrand({ verified: true });
   const created = await b.agent.post("/api/brand/strings").send({ model: opts.model ?? `Spin Soft ${Date.now()}`, family: "polyester", gauges: "17" });
   expect(created.status).toBe(201);
   await db
@@ -89,7 +89,7 @@ describe("sponsored placements never touch the AI's pick", () => {
     const pickedModel: string = run.body.recommendation.setup.mains.exampleStrings[0]; // e.g. "Luxilon ALU Power 125"
     const [picked] = (await db.select().from(strings)).filter((s) => pickedModel.replace(/\W/g, "").toLowerCase().includes(s.model.replace(/\W/g, "").toLowerCase()) && s.model.length >= 5);
     expect(picked).toBeTruthy();
-    const b = await makeBrand();
+    const b = await makeBrand({ verified: true });
     // Simulate the pick's maker running a campaign on it.
     await db.insert(campaigns).values({ brandId: b.brand.id, stringId: picked.id, name: "x", headline: "Our pick", status: "active", cpcCents: 2000, monthlyBudgetCents: 500000, levels: [] });
     const slot = await request(app).get(`/api/recommendation-runs/${run.body.runId}/sponsored`);
@@ -219,5 +219,26 @@ describe("sponsored slot over HTTP", () => {
     const v = await signUp();
     const run = await v.agent.post("/api/recommend").send(spinPlayer);
     expect((await v.agent.get(`/api/recommendation-runs/${run.body.runId}/sponsored`)).body.placement).toBeNull();
+  });
+});
+
+describe("only verified brands are ever served", () => {
+  it("an unverified brand can save a draft but can't go live, and is never served", async () => {
+    await pauseAllCampaigns();
+    const b = await makeBrand(); // unverified: could be a lookalike of a real brand
+    const created = await b.agent.post("/api/brand/strings").send({ model: `Lookalike ${Date.now()}`, family: "polyester" });
+    await db.update(strings).set({ stiffness: 195, comfort: 8, spin: 9, control: 8, power: 6, durability: 6 }).where(eq(strings.id, created.body.id));
+    const body = { stringId: created.body.id, name: "x", headline: "Totally Luxilon", cpcCents: 2000, monthlyBudgetCents: 500000 };
+    const live = await b.agent.post("/api/brand/campaigns").send(body);
+    expect(live.status).toBe(403);
+    expect(live.body.message).toMatch(/verified/);
+    const draft = await b.agent.post("/api/brand/campaigns").send({ ...body, status: "draft" });
+    expect(draft.status).toBe(201);
+    expect((await b.agent.patch(`/api/brand/campaigns/${draft.body.id}`).send({ status: "active" })).status).toBe(403);
+    // Even if a campaign row were active, serving ignores unverified brands.
+    await db.update(campaigns).set({ status: "active" }).where(eq(campaigns.id, draft.body.id));
+    const app = await getApp();
+    const run = await request(app).post("/api/recommend").send(spinPlayer);
+    expect((await request(app).get(`/api/recommendation-runs/${run.body.runId}/sponsored`)).body.placement).toBeNull();
   });
 });

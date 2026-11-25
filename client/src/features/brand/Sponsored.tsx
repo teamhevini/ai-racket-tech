@@ -10,7 +10,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Card, Chip, EmptyState, Skeleton } from "@/components/ui/surface";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { cap, dollars, errMsg, int, Note, pct, StatusPill, toCents, type BrandJson, type BrandString, type CampaignRow, type ReachResponse } from "./shared";
+import { cap, dollars, errMsg, int, Note, pct, StatusPill, toCents, VerifyNotice, type BrandJson, type BrandString, type CampaignRow, type ReachResponse } from "./shared";
 
 const campaignsKey = ["/api/brand/campaigns"] as const;
 const LEVELS = ["beginner", "intermediate", "advanced", "pro"] as const;
@@ -34,6 +34,7 @@ export function SponsoredTab({ brand, strings }: { brand: BrandJson; strings: Br
         )}
       </div>
 
+      <VerifyNotice brand={brand} what="Campaigns you create are saved as drafts. They" />
       <RulesCard />
 
       {q.isLoading ? (
@@ -273,7 +274,7 @@ function CampaignSheet({ value, onClose, strings, brand }: { value: CampaignRow 
       if (Number.isNaN(cpcCents) || cpcCents < SPONSORED_MIN_CPC_CENTS) throw new ApiError(`Minimum bid is ${dollars(SPONSORED_MIN_CPC_CENTS)} per click.`, 400, { field: "cpcCents" });
       if (Number.isNaN(monthlyBudgetCents) || monthlyBudgetCents < 5000) throw new ApiError("Minimum budget is $50.00 a month.", 400, { field: "monthlyBudgetCents" });
       const body = { name: f.name.trim() || `${s?.model ?? "String"} campaign`, headline: f.headline, cpcCents, monthlyBudgetCents, levels: f.levels };
-      return isNew ? api("POST", "/api/brand/campaigns", { ...body, stringId: f.stringId, status: "active" }) : api("PATCH", `/api/brand/campaigns/${c!.id}`, body);
+      return isNew ? api("POST", "/api/brand/campaigns", { ...body, stringId: f.stringId, status: brand.claimed ? "active" : "draft" }) : api("PATCH", `/api/brand/campaigns/${c!.id}`, body);
     },
     onSuccess: () => {
       toast.success(isNew ? "Campaign live" : "Campaign saved");

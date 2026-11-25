@@ -65,8 +65,8 @@ export default function HowWeRank() {
         <p>
           A brand can fund free restrings with its string at partner shops. These are always labelled as brand-funded samples on the shop page
           and in the booking. The brand pays the install fee; the stringer keeps {100 - SAMPLE_PLATFORM_FEE_PCT}% and 10IS keeps{" "}
-          {SAMPLE_PLATFORM_FEE_PCT}%. Ratings from players who received a free sample are marked as such in brand insights, so a free set can't
-          quietly inflate a score.
+          {SAMPLE_PLATFORM_FEE_PCT}%. Installs and ratings from free samples are tagged and kept out of a string's organic ratings and funnel; brands see
+          them separately in their sample results, so a free set can't quietly inflate a score.
         </p>
 
         <h2>Shops in the directory</h2>
@@ -85,8 +85,9 @@ export default function HowWeRank() {
         <h2>Your data</h2>
         <p>
           Brands and shops on paid plans can see insights — how often a string is recommended, who re-strings with it, how it's rated. These are
-          built from hashed identifiers, aggregated, and never shown for any group smaller than {K_ANONYMITY} distinct players (k-anonymity of{" "}
-          {K_ANONYMITY}). We do not sell personal data. A stringer only sees your racket's string history if you let them, per booking. See our{" "}
+          built from pseudonymised data: each player is a keyed hash rather than a name or account, which is still personal data under GDPR, so
+          it never leaves 10IS. Brands only see aggregates, and any figure, including a single week on a chart, is hidden unless it comes from
+          at least {K_ANONYMITY} different players. We do not sell personal data. A stringer only sees your racket's string history if you let them, per booking. See our{" "}
           <Link href="/privacy">privacy policy</Link> for the full picture.
         </p>
 

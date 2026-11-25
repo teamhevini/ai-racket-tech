@@ -84,7 +84,7 @@ export default function BrandPortal() {
           className="mt-6"
           icon={<BarChart3 />}
           title="10IS for Business"
-          body="String companies, racket brands and retailers: manage your catalogue, reach players your products genuinely fit, and see honest, anonymised demand."
+          body="String companies, racket brands and retailers: manage your catalogue, reach players your products genuinely fit, and see honest, aggregated demand."
           action={
             <Button asChild size="lg">
               <Link href="/brand/new">Set up your brand</Link>
@@ -138,7 +138,7 @@ export default function BrandPortal() {
         {tab === "catalogue" && <CatalogueTab strings={strings} />}
         {tab === "sponsored" && <SponsoredTab brand={brand} strings={strings} />}
         {tab === "samples" && <SamplesTab strings={strings} />}
-        {tab === "offers" && <OffersTab />}
+        {tab === "offers" && <OffersTab brand={brand} />}
         {tab === "plan" && <PlanTab brand={brand} />}
       </div>
     </Page>

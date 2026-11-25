@@ -68,7 +68,7 @@ type Named = { name: string; share?: number | null; players: number | null };
 export interface StringInsights {
   windowWeeks: number;
   kAnonymity: number;
-  weekly: Array<{ week: string; recommended: number; total: number; share: number }>;
+  weekly: Array<{ week: string; recommended: number | null; total: number | null; share: number | null }>;
   funnel: Array<{ stage: string; players: number | null }>;
   ratings: Array<{ stringId: number; model: string; avg: number | null; players: number | null }>;
   levels: Named[];
@@ -257,5 +257,23 @@ export function StatusPill({ status }: { status: string }) {
       <span aria-hidden className={cn("size-1.5 rounded-full", tone)} />
       {cap(status)}
     </span>
+  );
+}
+
+/** Shown on tabs whose output reaches players, until 10IS has verified the brand. */
+export function VerifyNotice({ brand, what }: { brand: BrandJson; what: string }) {
+  if (brand.claimed) return null;
+  return (
+    <div className="flex gap-3 rounded-2xl bg-clay-soft px-4 py-3 text-sm leading-relaxed text-clay" role="status">
+      <span aria-hidden className="mt-1.5 size-2 shrink-0 rounded-full bg-clay" />
+      <p>
+        <span className="font-semibold">Verification pending.</span> {what} go live once we've confirmed you represent {brand.name}, so nobody can
+        advertise or send players to a link under a lookalike name. Email{" "}
+        <a className="font-semibold underline underline-offset-4" href="mailto:partners@10is.app">
+          partners@10is.app
+        </a>{" "}
+        from a company address{brand.website ? ` on ${(() => { try { return new URL(brand.website).hostname.replace(/^www\./, ""); } catch { return brand.website; } })()}` : ""}.
+      </p>
+    </div>
   );
 }

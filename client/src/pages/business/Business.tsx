@@ -34,7 +34,7 @@ const AUDIENCES = [
     icon: Store,
     who: "Racket brands",
     pitch: "Know what goes into your frames after the sale.",
-    gets: ["A verified brand page", "Which strings and tensions players pair with your frames", "Anonymised insight by level and playstyle", "Partner sample programmes"],
+    gets: ["A verified brand page", "Which strings and tensions players pair with your frames", "Aggregated insight by level and playstyle", "Partner sample programmes"],
   },
 ];
 
@@ -146,7 +146,7 @@ export default function Business() {
               ["Sponsored means labelled", "A clear “Sponsored” label and who paid, shown only when it fits the player."],
               ["Never replaces or reorders", "At most one placement, always after the pick and its alternatives."],
               ["Paid players see none", "Pro and Club members never see a sponsored placement."],
-              ["Anonymised insights", `Hashed, aggregated, and never a group smaller than ${K_ANONYMITY} players.`],
+              ["Aggregated insights", `Players are pseudonymised (a keyed hash), only aggregates leave 10IS, and never a group smaller than ${K_ANONYMITY} players.`],
               ["Real ratings only", "Only verified 10IS bookings can rate a shop or string. We never buy or bury reviews."],
             ].map(([t, d]) => (
               <li key={t} className="flex gap-3">

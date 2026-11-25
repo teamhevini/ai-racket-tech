@@ -554,9 +554,10 @@ export const sampleProgramShops = pgTable(
   (t) => [uniqueIndex("sample_program_shop_idx").on(t.programId, t.shopId)],
 );
 
-// ─── Anonymised demand signals (feeds the insights dashboard) ──────────────
+// ─── Pseudonymised demand signals (feeds the insights dashboard) ───────────
 // No user id: players are a keyed hash so retention can be measured without
-// identifying anyone. Groups under the k-anonymity floor are never shown.
+// naming anyone. That is pseudonymous, not anonymous, data under GDPR, so it
+// never leaves 10IS raw; brands only see aggregates of at least K_ANONYMITY players.
 export const stringSignals = pgTable(
   "string_signals",
   {
@@ -569,6 +570,8 @@ export const stringSignals = pgTable(
     region: text("region"),
     rating: integer("rating"),
     racketBrand: text("racket_brand"),
+    // True for installs and ratings that came from a brand-funded free sample.
+    sampled: boolean("sampled").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("string_signals_string_idx").on(t.stringId, t.kind)],

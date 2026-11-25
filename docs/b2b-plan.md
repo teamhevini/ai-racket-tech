@@ -57,13 +57,13 @@ We win **stringers first, for free**, because their bookings and job records cre
   - **retention:** what share of players restring with you next time, and which brands switchers go to;
   - **ratings** from verified bookings;
   - regions and the frames you're paired with.
-  - All anonymised; a group is never shown below 5 players.
+  - Pseudonymised (players are a keyed hash) and aggregated; no figure, including a single week on a chart, is shown below 5 players.
 - **Partner:** everything in Insights plus **sample programmes run through partner stringers** (the brand pays an install fee per trial set; we track sample → rating → rebuy), and a quarterly category report.
 - **Sponsored placement:** one clearly labelled slot, shown only to players the string genuinely fits, after the AI's pick. Pay per click from $0.80, with a monthly cap.
 - **Why they'd pay:** brands currently spend on reps, demo reels and trade promotions with no way to measure whether a stringer or player switched. We sell the one thing they can't buy anywhere else: **measured trial and switching**, at the moment of decision, with a neutral recommendation in front of it.
 
 ### Retailers: free listing plus affiliate commission
-- **Smallest credible first step:** a retailer lists prices and stock for strings in our catalogue. Where-to-buy lists are **sorted cheapest-in-stock first, never by commission**. Links carry `rel="sponsored"` and a click code; sales come back by postback and earn 3–8% commission. Retailers see clicks, orders and revenue per string.
+- **Smallest credible first step:** a retailer lists prices and stock for strings in our catalogue. Offers only go live once 10IS has verified the retailer, and every product link must be on the retailer's own website, because 10IS redirects players to it. Where-to-buy lists are **sorted cheapest-in-stock first, never by commission**. Links carry `rel="sponsored"` and a click code; sales come back by postback and earn 3–8% commission. Retailers see clicks, orders and revenue per string.
 - **Why they'd join:** zero cost, and buyers who already know exactly what they want.
 
 ### Racket brands: Insights ($490/mo)
@@ -78,9 +78,9 @@ We win **stringers first, for free**, because their bookings and job records cre
 |---|---|---|---|---|
 | Shop Pro | Stringer | $19/mo | Stripe subscription | Doesn't buy ranking |
 | Club / multi-stringer (next) | Clubs, chains | $79/mo, up to 5 stringers | Stripe | Same |
-| Sponsored placement | String company | CPC from $0.80 (typical $1.20–$2.00), monthly cap | Prepaid/invoiced against `campaign_events` | Fit check first; max one; labelled; never replaces or reorders; paid players exempt |
+| Sponsored placement | String company | CPC from $0.80 (typical $1.20–$2.00), monthly cap | Each billable click is recorded in `campaign_events`. **Invoicing is not built yet**: monthly invoices from these records come next | Fit check first; max one; labelled; never replaces or reorders; paid players exempt |
 | Insights | String company, racket brand | $490/mo | Stripe subscription | k-anonymity 5; hashed players; no personal data |
-| Partner (samples) | String company | $1,490/mo + install fee per sample ($15–$25) + the string | Subscription + invoiced installs | Samples labelled to players and stringers; sampled ratings tracked separately |
+| Partner (samples) | String company | $1,490/mo + install fee per sample ($15–$25) + the string | Subscription via Stripe; install fees invoiced manually at first. **Stringer payouts are not built yet** (Stripe Connect) | Samples labelled to players and stringers; sampled installs and ratings tagged and kept out of organic insights |
 | Sample install margin | String company | 20% of the install fee | Netted from payouts | Same |
 | Affiliate | Retailer | 3–8% of order | Postback, 30-day window | Sorted by price; commission never shown or used to rank |
 | Player plans (existing) | Player | Pro $4.99 one-time, Club $1.99/mo | Stripe | Paid players are ad-free |
@@ -108,6 +108,8 @@ We win **stringers first, for free**, because their bookings and job records cre
 ---
 
 ## 5. Simple unit economics
+
+*Prices come from section 3. Conversion inputs are working assumptions, not measured or researched figures, so treat them as levers to test: a sponsored slot shown on 35% of free-plan setups, an 8% click-through rate, 15% of retailer click-outs buying, a $20–$22 basket, a 5% average commission. If any is off by half, sponsored and affiliate revenue move by half; the subscription lines don't depend on them.*
 
 **Scenario A: one metro, year one**
 - 3,000 active players and 1,500 recommendations a month.
@@ -163,10 +165,11 @@ If players suspect the pick is bought, they stop trusting it. Then brands have n
 | Brands see what they can't buy | "Fit reach" shows a brand, before spending, what share of recent players its string qualifies for and why it's held back for the rest |
 | Shops can't pay for position | The directory isn't ordered by plan |
 | Affiliate never changes order | Offers are sorted by stock, then price; commission isn't exposed or used |
-| Ratings are real | Only players with a ready or collected booking can rate. Ratings feed insights only above 5 players. We never buy, condition or suppress reviews. Sampled installs are recorded as `sample` signals so brands can separate them |
+| Ratings are real | Only players with a ready or collected booking can rate. Ratings feed insights only above 5 players. We never buy, condition or suppress reviews. Installs and ratings from free samples are tagged `sampled` and kept out of a string's organic ratings and funnel; brands see them only in their sample results |
+| Only verified brands reach players | Unverified brands can build drafts but can't run sponsored placements, and serving skips them even if a row says "active". Retail links need a verified retailer and must sit on its own domain; the redirect re-checks both on every click |
 
 **Governance**
-- The integrity tests run in CI and block merges.
+- The integrity tests run in GitHub Actions on every pull request (`.github/workflows/ci.yml`). To make them **block** merges, mark the "check-and-test" job as a required check in branch protection; that's a repository setting and isn't switched on yet.
 - `campaign_events` records the fit score of every impression and click for audit.
 - We publish the share of setups that showed a sponsored slot each quarter.
 - Any brand found pressuring stringers or players loses sponsored access.
@@ -184,7 +187,7 @@ If players suspect the pick is bought, they stop trusting it. Then brands have n
 | Ad transparency: that it's an ad, who paid, why it's shown | EU DSA Art. 26 (small enterprises may be exempt; we comply anyway) | "Paid placement by {brand}" plus "Why am I seeing this?" with fit reasons |
 | No targeting on special-category data | DSA Art. 26(3), GDPR | Injury information is used only to *exclude* unsafe sponsored strings, never to target; brands can't target by injury |
 | Ads obviously identifiable | UK CAP Code 2.1; DMCC Act 2024 (up to 10% of turnover) | Same label; no "collab"-style euphemisms |
-| Aggregate and anonymise shared data; consent for personal data | GDPR; Arccos precedent | Insights use only `string_signals` (no user id, keyed hash, k ≥ 5). A stringer sees a racket's full history only on the player's per-booking opt-in, and never the player's private notes |
+| Aggregate and protect shared data; consent for personal data | GDPR; Arccos precedent | Insights use only `string_signals`: no user id, a keyed hash per player (pseudonymous, so still personal data under GDPR and never exported raw), and no figure below 5 players. A stringer sees a racket's full history only on the player's per-booking opt-in, and never the player's private notes |
 
 *Before launch: a short review by counsel of the label wording and of whether the 10IS player Terms cover the hashed analytics. The design follows the guidance above, but this isn't legal advice.*
 
@@ -198,7 +201,9 @@ If players suspect the pick is bought, they stop trusting it. Then brands have n
 | Club platforms (CourtReserve) bundle stringing | Medium | Integrate rather than compete: our edge is the player's bag, reminder and recommendation. Export and ICS already exist; add a club API next |
 | Brands won't pay until volume exists | High | Samples first (useful at small scale); design-partner pricing; monthly reports before self-serve dashboards |
 | A brand pushes a stringer to recommend its string | Medium | Samples labelled to players; stringer payouts per install, not per rating; ratings tracked separately for sampled installs |
-| Insights leak personal data | Low | No ids in signals; k-anonymity; no raw export; signal writes never block player requests |
+| Insights leak personal data | Low | No ids in signals; every figure, including each chart week, needs 5+ players; no raw export; signal writes never block player requests |
+| Click fraud against a rival's campaign | Medium | Clicks bill once per recommendation and only for a slot actually shown; recommendations are rate-limited. Next: per-user and per-IP click caps and refunds for flagged patterns before invoicing |
+| A lookalike brand or a phishing link | Medium | Verification before anything reaches players; retail links locked to the retailer's own domain and re-checked on every redirect |
 | Sponsored inventory too small to matter | High | Planned for: sponsored is under 10% of revenue in both scenarios |
 | Liquidity is local and thin | High | Deep-city launch; walk-in value; reminders create demand at the right moment |
 | Payment disputes on bookings | Low (no in-app payment yet) | Pay at the shop for now; add Stripe Connect with clear refund rules later |
@@ -219,7 +224,7 @@ If players suspect the pick is bought, they stop trusting it. Then brands have n
 - **String companies:**
   - brand portal at `/brand`: profile, catalogue with locked lab specs, sponsored campaigns with fit reach, sample programmes, insights dashboard on demo data;
   - Insights and Partner plans via Stripe test mode.
-- **Retailers:** price and stock offers, tracked `/api/go/offer/:id` redirects, conversion postback, click and sales reporting.
+- **Retailers:** price and stock offers (verified retailers, own-domain links only), tracked `/api/go/offer/:id` redirects, conversion postback, click and sales reporting.
 - **Racket brands:** brand page plus frame-pairing insights.
 - **Players:**
   - "Book a restring" from the reminder, prefilled with last time's shop and setup;
@@ -233,15 +238,17 @@ If players suspect the pick is bought, they stop trusting it. Then brands have n
 - In-app payment through Stripe Connect.
 - Invite-your-stringer flow from saved stringers.
 - Demo-racket programmes.
-- Separating sampled ratings in insights.
-- Admin queue to verify brands.
+- Monthly CPC invoicing from `campaign_events`, with click-fraud caps.
+- Stringer payouts for sample installs (Stripe Connect).
+- An admin screen for verifying brands (today it's one admin API call: `PATCH /api/admin/brands/:id/verify`).
+- Make the CI check required in branch protection.
 - Quarterly published sponsored-share figure.
 
 ---
 
 ## Appendix: research sources (selection)
 
-Full notes with every source URL: `side-session-notes/…/b2b-research.md` (shared research folder for this project).
+Full notes with every source URL: `side-session-notes/…/b2b-research.md` (shared research folder for this project). The research was gathered by a research assistant and its sources were not independently re-checked for this plan; facts it couldn't confirm are listed below, and the rest should be spot-checked before anything is quoted externally.
 
 - **Stringer software:** RacquetPass pricing (sportsinteriors.com/racquetpass-partner-page); CourtReserve stringing beta (intercom.help/courtreserve); Nevalto (capterra.ca); String Maven (App Store).
 - **Marketplaces:** Stringr (womenstennisblog.com 2021; ausopen.com AO StartUps 2023); Stringbox (tennis.com).

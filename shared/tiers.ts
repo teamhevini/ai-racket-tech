@@ -121,7 +121,7 @@ export const BRAND_PLANS = {
       "Demand: how often the AI recommends you vs. the category",
       "Retention: who re-strings with you and where switchers go",
       "Ratings by string, level and playstyle",
-      "Anonymised, never below 5 players per group",
+      "Pseudonymised and aggregated, never below 5 players per group",
     ],
   },
   partner: {

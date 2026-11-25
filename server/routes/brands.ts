@@ -30,6 +30,9 @@ import { getStripe } from "./billing";
 import { parseBody, parseId } from "./util";
 
 export const brandsRouter = Router();
+
+const UNVERIFIED_CAMPAIGN =
+  "Sponsored placements go live once we've verified your brand, so nobody can advertise under a lookalike name. Save it as a draft and email partners@10is.app.";
 const appUrl = (req: Request) => process.env.APP_URL ?? `${req.protocol}://${req.get("host")}`;
 
 brandsRouter.use("/api/brand", requireAuth);
@@ -39,6 +42,21 @@ async function requireBrand(req: Request, kind?: Brand["kind"]): Promise<Brand> 
   if (!brand) throw httpError(404, "You don't have a brand account yet.");
   if (kind && brand.kind !== kind) throw httpError(403, `That's only for ${kind === "retailer" ? "retailers" : kind === "string" ? "string companies" : "racket brands"}.`);
   return brand;
+}
+
+export function hostOf(url: string | null | undefined): string | null {
+  try {
+    return url ? new URL(url).hostname.toLowerCase().replace(/^www\./, "") : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Is `url` on the brand's own site (same host or a subdomain of it)? */
+export function onOwnDomain(url: string, website: string | null | undefined): boolean {
+  const site = hostOf(website);
+  const host = hostOf(url);
+  return !!site && !!host && (host === site || host.endsWith(`.${site}`));
 }
 
 const hasInsights = (b: Brand) => b.plan === "insights" || b.plan === "partner";
@@ -165,6 +183,7 @@ brandsRouter.post(
     if (!data) return;
     const [s] = await db.select().from(strings).where(and(eq(strings.id, data.stringId), eq(strings.brandId, brand.id)));
     if (!s) return res.status(400).json({ message: "Pick one of your own strings.", field: "stringId" });
+    if (!brand.claimed && (data.status ?? "active") === "active") return res.status(403).json({ message: UNVERIFIED_CAMPAIGN });
     const [c] = await db
       .insert(campaigns)
       .values({ ...data, levels: data.levels ?? [], status: data.status ?? "active", brandId: brand.id })
@@ -180,6 +199,7 @@ brandsRouter.patch(
     const id = parseId(req.params.id);
     const data = parseBody(campaignInputSchema.omit({ stringId: true }).partial(), req.body, res);
     if (!data) return;
+    if (!brand.claimed && data.status === "active") return res.status(403).json({ message: UNVERIFIED_CAMPAIGN });
     const [c] = id ? await db.update(campaigns).set(data).where(and(eq(campaigns.id, id), eq(campaigns.brandId, brand.id))).returning() : [];
     if (!c) return res.status(404).json({ message: "Campaign not found" });
     res.json(c);
@@ -308,6 +328,14 @@ brandsRouter.post(
     const brand = await requireBrand(req, "retailer");
     const data = parseBody(retailOfferInputSchema, req.body, res);
     if (!data) return;
+    // 10IS redirects players to these links, so only verified retailers can add them,
+    // and only to their own website. Otherwise a sign-up form becomes a phishing relay.
+    if (!brand.claimed) {
+      return res.status(403).json({ message: "Offers go live once we've verified your store. Email partners@10is.app from your company address." });
+    }
+    if (!onOwnDomain(data.url, brand.website)) {
+      return res.status(400).json({ message: `Links must point to your own website${brand.website ? ` (${hostOf(brand.website)})` : ""}.`, field: "url" });
+    }
     const [s] = await db.select({ id: strings.id }).from(strings).where(eq(strings.id, data.stringId));
     if (!s) return res.status(400).json({ message: "Unknown string", field: "stringId" });
     const [o] = await db

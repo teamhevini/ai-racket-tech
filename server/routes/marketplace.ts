@@ -23,6 +23,7 @@ import { asyncHandler, loadUser, rateLimit } from "../auth";
 import { storage } from "../storage";
 import { matchCatalog, recordSignals } from "../b2b";
 import { parseBody, parseId } from "./util";
+import { onOwnDomain } from "./brands";
 
 export const marketplaceRouter = Router();
 
@@ -69,7 +70,7 @@ marketplaceRouter.get(
       .select({ id: retailOffers.id, priceCents: retailOffers.priceCents, inStock: retailOffers.inStock, retailer: brands.name, retailerSlug: brands.slug })
       .from(retailOffers)
       .innerJoin(brands, eq(brands.id, retailOffers.retailerId))
-      .where(eq(retailOffers.stringId, row.s.id))
+      .where(and(eq(retailOffers.stringId, row.s.id), eq(brands.claimed, true)))
       .orderBy(desc(retailOffers.inStock), asc(retailOffers.priceCents));
     const [rating] = await db
       .select({ avg: sql<number | null>`avg(${stringSignals.rating})::float`, players: sql<number>`count(distinct ${stringSignals.playerHash})::int` })
@@ -106,7 +107,7 @@ marketplaceRouter.get(
       .select({ id: retailOffers.id, stringId: retailOffers.stringId, priceCents: retailOffers.priceCents, inStock: retailOffers.inStock, retailer: brands.name })
       .from(retailOffers)
       .innerJoin(brands, eq(brands.id, retailOffers.retailerId))
-      .where(inArray(retailOffers.stringId, picks.map((p) => p.id)))
+      .where(and(inArray(retailOffers.stringId, picks.map((p) => p.id)), eq(brands.claimed, true)))
       .orderBy(desc(retailOffers.inStock), asc(retailOffers.priceCents));
     res.json({
       strings: picks.map((p) => ({
@@ -127,8 +128,12 @@ marketplaceRouter.get(
   rateLimit({ windowMs: 60_000, max: 60 }),
   asyncHandler(async (req, res) => {
     const offerId = parseId(req.params.offerId);
-    const [offer] = offerId ? await db.select().from(retailOffers).where(eq(retailOffers.id, offerId)) : [];
-    if (!offer) return res.status(404).json({ message: "Offer not found" });
+    const [row] = offerId
+      ? await db.select({ offer: retailOffers, retailer: brands }).from(retailOffers).innerJoin(brands, eq(brands.id, retailOffers.retailerId)).where(eq(retailOffers.id, offerId))
+      : [];
+    // Re-checked at click time: a retailer that lost verification or changed domain stops redirecting.
+    if (!row || !row.retailer.claimed || !onOwnDomain(row.offer.url, row.retailer.website)) return res.status(404).json({ message: "Offer not found" });
+    const offer = row.offer;
     const user = await loadUser(req);
     const runId = parseId(String(req.query.run ?? "")) ?? null;
     const run = runId ? await storage.getRecommendationRun(runId) : undefined;
@@ -185,7 +190,9 @@ async function liveCampaigns(): Promise<CandidateCampaign[]> {
     .select({ c: campaigns, s: strings })
     .from(campaigns)
     .innerJoin(strings, eq(strings.id, campaigns.stringId))
-    .where(and(eq(campaigns.status, "active"), eq(strings.active, true)));
+    .innerJoin(brands, eq(brands.id, campaigns.brandId))
+    // Only verified brands are ever served.
+    .where(and(eq(campaigns.status, "active"), eq(strings.active, true), eq(brands.claimed, true)));
   if (!rows.length) return [];
   const spend = await db
     .select({ id: campaignEvents.campaignId, cents: sql<number>`coalesce(sum(${campaignEvents.costCents}),0)::int` })

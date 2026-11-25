@@ -13,7 +13,8 @@ export function ShareAreaChart({
   points,
   className,
 }: {
-  points: Array<{ week: string; share: number; recommended: number; total: number }>;
+  /** Null values are weeks suppressed for having fewer than 5 players; drawn as gaps. */
+  points: Array<{ week: string; share: number | null; recommended: number | null; total: number | null }>;
   className?: string;
 }) {
   const [hover, setHover] = React.useState<number | null>(null);
@@ -23,15 +24,27 @@ export function ShareAreaChart({
   const pad = { t: 16, r: 12, b: 28, l: 40 };
   const iw = W - pad.l - pad.r;
   const ih = H - pad.t - pad.b;
-  const maxRaw = Math.max(1, ...points.map((p) => p.share));
+  const maxRaw = Math.max(1, ...points.map((p) => p.share ?? 0));
   const step = maxRaw <= 5 ? 1 : maxRaw <= 10 ? 2 : maxRaw <= 25 ? 5 : maxRaw <= 50 ? 10 : 20;
   const max = Math.ceil((maxRaw * 1.1) / step) * step;
   const ticks: number[] = [];
   for (let v = 0; v <= max; v += step) ticks.push(v);
   const x = (i: number) => pad.l + (points.length <= 1 ? iw / 2 : (i / (points.length - 1)) * iw);
   const y = (v: number) => pad.t + ih - (v / max) * ih;
-  const line = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.share).toFixed(1)}`).join(" ");
-  const area = points.length ? `${line} L${x(points.length - 1)},${y(0)} L${x(0)},${y(0)} Z` : "";
+  // Contiguous runs of visible weeks; a suppressed week breaks the line rather than dropping to zero.
+  const runs: Array<Array<{ i: number; v: number }>> = [];
+  points.forEach((p, i) => {
+    if (p.share == null) return;
+    const last = runs[runs.length - 1];
+    if (last && last[last.length - 1].i === i - 1) last.push({ i, v: p.share });
+    else runs.push([{ i, v: p.share }]);
+  });
+  const line = runs.map((r) => r.map((pt, k) => `${k ? "L" : "M"}${x(pt.i).toFixed(1)},${y(pt.v).toFixed(1)}`).join(" ")).join(" ");
+  const area = runs
+    .filter((r) => r.length > 1)
+    .map((r) => `${r.map((pt, k) => `${k ? "L" : "M"}${x(pt.i).toFixed(1)},${y(pt.v).toFixed(1)}`).join(" ")} L${x(r[r.length - 1].i)},${y(0)} L${x(r[0].i)},${y(0)} Z`)
+    .join(" ");
+  const lastVisible = [...points.keys()].reverse().find((i) => points[i].share != null);
 
   const onMove = (clientX: number) => {
     const el = wrap.current;
@@ -77,14 +90,17 @@ export function ShareAreaChart({
           )}
           <path d={area} fill="url(#share-fill)" />
           <path d={line} fill="none" stroke="rgb(var(--brand))" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-          {h && hover != null && (
+          {runs.filter((r) => r.length === 1).map((r) => (
+            <circle key={`dot-${r[0].i}`} cx={x(r[0].i)} cy={y(r[0].v)} r={2.5} fill="rgb(var(--brand))" />
+          ))}
+          {h && hover != null && h.share != null && (
             <g>
               <line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={y(0)} stroke="rgb(var(--ink) / 0.25)" strokeWidth={1} />
               <circle cx={x(hover)} cy={y(h.share)} r={5} fill="rgb(var(--brand))" stroke="rgb(var(--surface))" strokeWidth={2} />
             </g>
           )}
-          {points.length > 0 && hover == null && (
-            <circle cx={x(points.length - 1)} cy={y(points[points.length - 1].share)} r={4} fill="rgb(var(--brand))" stroke="rgb(var(--surface))" strokeWidth={2} />
+          {lastVisible != null && hover == null && (
+            <circle cx={x(lastVisible)} cy={y(points[lastVisible].share!)} r={4} fill="rgb(var(--brand))" stroke="rgb(var(--surface))" strokeWidth={2} />
           )}
         </svg>
         {h && hover != null && (
@@ -93,10 +109,16 @@ export function ShareAreaChart({
             style={{ left: `${Math.min(85, Math.max(15, (x(hover) / W) * 100))}%` }}
           >
             <p className="text-bg/60">Week of {weekLabel(h.week)}</p>
-            <p className="mt-0.5 font-semibold tabular">{pct(h.share)} share</p>
-            <p className="tabular text-bg/70">
-              {int(h.recommended)} of {int(h.total)} picks
-            </p>
+            {h.share == null ? (
+              <p className="mt-0.5 text-bg/80">{SUPPRESSED_NOTE}</p>
+            ) : (
+              <>
+                <p className="mt-0.5 font-semibold tabular">{pct(h.share)} share</p>
+                <p className="tabular text-bg/70">
+                  {int(h.recommended ?? 0)} of {int(h.total ?? 0)} picks
+                </p>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -114,9 +136,9 @@ export function ShareAreaChart({
           {points.map((p) => (
             <tr key={p.week}>
               <td>{p.week}</td>
-              <td>{pct(p.share)}</td>
-              <td>{p.recommended}</td>
-              <td>{p.total}</td>
+              <td>{p.share == null ? SUPPRESSED_NOTE : pct(p.share)}</td>
+              <td>{p.recommended ?? "—"}</td>
+              <td>{p.total ?? "—"}</td>
             </tr>
           ))}
         </tbody>

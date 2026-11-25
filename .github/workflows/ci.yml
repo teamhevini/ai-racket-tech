@@ -1,0 +1,31 @@
+name: CI
+
+# Type-check and run the test suite (including the sponsored-placement integrity
+# tests) on every pull request and on pushes to the main branches.
+on:
+  pull_request:
+  push:
+    branches: [main, rebuild/10is-v2]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Type-check
+        run: npm run check
+      - name: Tests (PGlite, no external services)
+        run: npm test

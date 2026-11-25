@@ -47,7 +47,7 @@ describe("brand accounts", () => {
   });
 
   it("campaigns must promote the brand's own strings, at or above the minimum bid", async () => {
-    const b = await makeBrand();
+    const b = await makeBrand({ verified: true });
     const [lux] = await db.select().from(strings).where(eq(strings.brandName, "Luxilon"));
     expect((await b.agent.post("/api/brand/campaigns").send({ stringId: lux.id, name: "x", headline: "Steal", cpcCents: 100, monthlyBudgetCents: 10000 })).status).toBe(400);
     const s = (await b.agent.post("/api/brand/strings").send({ model: "Own", family: "multifilament" })).body;
@@ -105,6 +105,34 @@ describe("insights", () => {
     expect(JSON.stringify(after)).not.toContain(playerHash("k-1")!);
   });
 
+  it("hides any week of the demand chart with fewer than 5 players", async () => {
+    const b = await makeBrand({ plan: "insights" });
+    const s = (await b.agent.post("/api/brand/strings").send({ model: `Weekly ${Date.now()}`, family: "polyester" })).body;
+    // This week: 3 players pick it — too few to show.
+    await db.insert(stringSignals).values([1, 2, 3].map((i) => ({ stringId: s.id, kind: "recommended", playerHash: playerHash(`w-${s.id}-${i}`) })));
+    const before = (await b.agent.get("/api/brand/insights")).body.data.weekly.at(-1);
+    expect(before.share).toBeNull();
+    expect(before.recommended).toBeNull();
+    expect(before.total).toBeNull();
+    await db.insert(stringSignals).values([4, 5].map((i) => ({ stringId: s.id, kind: "recommended", playerHash: playerHash(`w-${s.id}-${i}`) })));
+    const after = (await b.agent.get("/api/brand/insights")).body.data.weekly.at(-1);
+    expect(after.recommended).toBe(5);
+    expect(after.share).toBeGreaterThan(0);
+  });
+
+  it("keeps free-sample ratings out of organic ratings and the funnel", async () => {
+    const b = await makeBrand({ plan: "insights" });
+    const s = (await b.agent.post("/api/brand/strings").send({ model: `Sampled ${Date.now()}`, family: "multifilament" })).body;
+    const rows = [1, 2, 3, 4, 5, 6].flatMap((i) => [
+      { stringId: s.id, kind: "installed", playerHash: playerHash(`s-${s.id}-${i}`), sampled: true },
+      { stringId: s.id, kind: "rated", rating: 5, playerHash: playerHash(`s-${s.id}-${i}`), sampled: true },
+    ]);
+    await db.insert(stringSignals).values(rows);
+    const data = (await b.agent.get("/api/brand/insights")).body.data;
+    expect(data.ratings.find((r: { stringId: number }) => r.stringId === s.id).avg).toBeNull();
+    expect(data.funnel.find((f: { stage: string }) => f.stage === "installed").players).toBeNull();
+  });
+
   it("the demo string brand has a populated dashboard", async () => {
     const app = await getApp();
     const agent = request.agent(app);
@@ -113,7 +141,7 @@ describe("insights", () => {
     const res = await agent.get("/api/brand/insights");
     expect(res.status).toBe(200);
     expect(res.body.data.weekly).toHaveLength(12);
-    expect(res.body.data.weekly.some((w: { recommended: number }) => w.recommended > 0)).toBe(true);
+    expect(res.body.data.weekly.some((w: { recommended: number | null }) => (w.recommended ?? 0) > 0)).toBe(true);
     expect(res.body.data.retention.rate).not.toBeNull();
     const camps = (await agent.get("/api/brand/campaigns")).body;
     expect(camps.length).toBeGreaterThan(0);
@@ -165,6 +193,11 @@ describe("sample programmes through partner stringers", () => {
     const stats = (await b.agent.get("/api/brand/programs")).body.programs[0].stats;
     expect(stats.claimed).toBe(1);
     expect(stats.installed).toBe(1);
+    // The install and the player's rating are tagged as sampled.
+    await p.agent.post(`/api/bookings/${claim.body.id}/rate`).send({ rating: 5 });
+    const tagged = await db.select().from(stringSignals).where(eq(stringSignals.stringId, s.id));
+    expect(tagged.filter((t) => ["installed", "rated"].includes(t.kind)).every((t) => t.sampled)).toBe(true);
+    expect(tagged.some((t) => t.kind === "rated")).toBe(true);
   });
 
   it("only Shop Pro stringers can join programmes", async () => {
@@ -180,11 +213,16 @@ describe("sample programmes through partner stringers", () => {
 describe("retailers and affiliate tracking", () => {
   it("lists offers cheapest first regardless of commission, and tracks outbound clicks", async () => {
     const [s] = await db.select().from(strings).where(eq(strings.model, "NXT"));
-    const r1 = await makeBrand({ kind: "retailer" });
-    const r2 = await makeBrand({ kind: "retailer" });
+    const r1 = await makeBrand({ kind: "retailer", verified: true, website: "https://shop-one.example.com" });
+    const r2 = await makeBrand({ kind: "retailer", verified: true, website: "https://www.shop-two.example.com" });
     expect((await r1.agent.post("/api/brand/offers").send({ stringId: s.id, priceCents: 1900, url: "https://shop-one.example.com/nxt", commissionPct: 30 })).status).toBe(201);
     expect((await r2.agent.post("/api/brand/offers").send({ stringId: s.id, priceCents: 1500, url: "https://shop-two.example.com/nxt", commissionPct: 1 })).status).toBe(201);
-    expect((await r1.agent.post("/api/brand/offers").send({ stringId: s.id, priceCents: 1900, url: "http://insecure.example.com" })).status).toBe(400);
+    expect((await r1.agent.post("/api/brand/offers").send({ stringId: s.id, priceCents: 1900, url: "http://shop-one.example.com/x" })).status).toBe(400);
+    // Links must stay on the retailer's own site.
+    const offsite = await r1.agent.post("/api/brand/offers").send({ stringId: s.id, priceCents: 1900, url: "https://evil.example.net/login" });
+    expect(offsite.status).toBe(400);
+    expect(offsite.body.field).toBe("url");
+    expect((await r1.agent.post("/api/brand/offers").send({ stringId: s.id, priceCents: 1900, url: "https://shop-one.example.com.evil.net/x" })).status).toBe(400);
     // String companies can't post retail offers.
     const sb = await makeBrand();
     expect((await sb.agent.post("/api/brand/offers").send({ stringId: s.id, priceCents: 100, url: "https://x.example.com" })).status).toBe(403);
@@ -236,6 +274,25 @@ describe("retailers and affiliate tracking", () => {
     expect(click.convertedAt).not.toBeNull();
     expect(click.orderCents).toBe(b.body.priceCents);
     void app;
+  });
+});
+
+describe("verification gates on anything that reaches players", () => {
+  it("unverified retailers can't publish links, and a retailer that loses verification stops redirecting", async () => {
+    const [s] = await db.select().from(strings).where(eq(strings.model, "Revolve"));
+    const unverified = await makeBrand({ kind: "retailer", website: "https://new-store.example.com" });
+    const blocked = await unverified.agent.post("/api/brand/offers").send({ stringId: s.id, priceCents: 1200, url: "https://new-store.example.com/revolve" });
+    expect(blocked.status).toBe(403);
+
+    const r = await makeBrand({ kind: "retailer", verified: true, website: "https://legit.example.com" });
+    const offer = await r.agent.post("/api/brand/offers").send({ stringId: s.id, priceCents: 1200, url: "https://legit.example.com/revolve" });
+    expect(offer.status).toBe(201);
+    const app = await getApp();
+    expect((await request(app).get(`/api/go/offer/${offer.body.id}`)).status).toBe(302);
+    await db.update(brands).set({ claimed: false }).where(eq(brands.id, r.brand.id));
+    expect((await request(app).get(`/api/go/offer/${offer.body.id}`)).status).toBe(404);
+    const listed = (await request(app).get(`/api/strings/${s.id}`)).body.offers.map((o: { id: number }) => o.id);
+    expect(listed).not.toContain(offer.body.id);
   });
 });
 

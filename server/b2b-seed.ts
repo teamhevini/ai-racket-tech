@@ -332,7 +332,7 @@ export async function seedDemo(): Promise<void> {
     await db.insert(recommendationRuns).values({ inputsJson: { racketId: null, ...t.inputs }, outputJson: t.output, confidence: "medium", createdAt: daysAgo(Math.floor(rand() * 30)) });
   }
 
-  // Twelve weeks of anonymised signals for brand insights.
+  // Twelve weeks of pseudonymised signals for brand insights.
   const regions = ["Portland", "Seattle", "San Francisco", "Austin", "Boston", "Denver"];
   const levels = ["beginner", "intermediate", "advanced", "pro"];
   const styles = ["baseliner", "all-court", "aggressive", "defensive", "serve&volley"];

@@ -15,6 +15,13 @@
       "when": 1795641746163,
       "tag": "0001_wet_wong",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795643172870,
+      "tag": "0002_sticky_the_fallen",
+      "breakpoints": true
     }
   ]
 }
