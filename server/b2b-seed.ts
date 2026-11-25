@@ -316,7 +316,7 @@ export async function seedDemo(): Promise<void> {
   const regions = ["Portland", "Seattle", "San Francisco", "Austin", "Boston", "Denver"];
   const levels = ["beginner", "intermediate", "advanced", "pro"];
   const styles = ["baseliner", "all-court", "aggressive", "defensive", "serve&volley"];
-  const frames = ["Babolat", "Wilson", "Head", "Yonex", "Arcfield", "Tecnifibre"];
+  const frames = ["Babolat", "Wilson", "Head", "Yonex", "Arcfield", "Arcfield", "Arcfield", "Tecnifibre"];
   const weighted: TennisString[] = [];
   for (const s of allStrings) {
     const w = s.brandName === "Northline" ? 3 : ["Hyper-G", "RPM Blast", "ALU Power", "X-One Biphase", "Lynx Tour", "NXT"].includes(s.model) ? 5 : 2;

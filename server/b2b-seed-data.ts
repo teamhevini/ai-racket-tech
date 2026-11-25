@@ -139,7 +139,7 @@ export const DEMO_RETAILER = {
 
 export const DEMO_RACKET_BRAND = {
   email: DEMO_ACCOUNTS.racketBrand,
-  name: "Arcfield Rackets",
+  name: "Arcfield",
   slug: "arcfield",
   tagline: "Demo racket brand.",
   website: "https://example.com/arcfield",
