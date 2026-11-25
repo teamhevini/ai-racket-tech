@@ -268,3 +268,16 @@ describe("free shop limits and Shop Pro billing", () => {
     expect((await late.agent.get("/api/shop/me")).body.shop.plan).toBe("pro");
   });
 });
+
+describe("booking the AI's setup", () => {
+  it("links free-text strings from a recommendation to the catalogue for pricing", async () => {
+    const { shop } = await makeShop();
+    const p = await signUp();
+    const res = await p.agent.post(`/api/shops/${shop.slug}/bookings`).send({ racketLabel: "Pure Aero", mains: "Solinco Hyper-G 17", tensionMains: 50, dropOffAt: tomorrow() });
+    expect(res.status).toBe(201);
+    expect(res.body.mains).toBe("Solinco Hyper-G 17");
+    const [hyper] = await db.select().from(strings).where(eq(strings.model, "Hyper-G"));
+    expect(res.body.stringId).toBe(hyper.id);
+    expect(res.body.priceCents).toBe(2000 + (hyper.setPriceCents ?? 0));
+  });
+});

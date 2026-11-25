@@ -147,6 +147,12 @@ function Dashboard() {
         </Link>
       </section>
 
+      <p className="mt-10 text-center text-sm text-muted">
+        <Link href="/business" className="inline-flex items-center gap-1 hover:text-ink">
+          Run a shop or a brand? <span className="font-medium text-ink">10IS for Business</span> <ArrowRight className="size-3.5" />
+        </Link>
+      </p>
+
       <RacketForm open={adding} onOpenChange={setAdding} />
       {logFor && <JobForm open={!!logFor} onOpenChange={(v) => !v && setLogFor(null)} racket={logFor} />}
     </Page>

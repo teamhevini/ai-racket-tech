@@ -51,7 +51,8 @@ marketplaceRouter.get(
       .leftJoin(brands, eq(brands.id, strings.brandId))
       .where(and(...conds))
       .orderBy(asc(strings.brandName), asc(strings.model));
-    res.json(rows.map((r) => ({ ...r.s, brandSlug: r.brandSlug, brandVerified: !!r.brandClaimed })));
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 200));
+    res.json(rows.slice(0, limit).map((r) => ({ ...r.s, brandSlug: r.brandSlug, brandVerified: !!r.brandClaimed })));
   }),
 );
 

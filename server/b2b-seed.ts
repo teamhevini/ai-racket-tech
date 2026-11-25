@@ -245,7 +245,7 @@ export async function seedDemo(): Promise<void> {
   const now = Date.now();
   const live: Array<{ name: string; racket: string; s: TennisString; t: number; status: BookingStatus; dueIn: number; rush?: boolean; user?: typeof player; racketRow?: typeof aero; note?: string }> = [
     { name: "Maya Okafor", racket: "Backup · Wilson Blade 98 v9", s: ridgeSoft, t: 50, status: "requested", dueIn: 26, user: player, racketRow: blade, note: "Same as my match racket please" },
-    { name: "Daniel Kim", racket: "Yonex EZONE 100", s: byName("Yonex", "Poly Tour Pro"), t: 52, status: "requested", dueIn: 30 },
+    { name: "Daniel Kim", racket: "Yonex EZONE 100", s: byName("Yonex", "Poly Tour Pro"), t: 52, status: "accepted", dueIn: 30 },
     { name: "Aisha Bello", racket: "Head Speed Pro", s: byName("Luxilon", "ALU Power"), t: 48, status: "accepted", dueIn: 5, rush: true },
     { name: "Tom Hughes", racket: "Babolat Pure Drive", s: byName("Tecnifibre", "X-One Biphase"), t: 55, status: "in_progress", dueIn: 2 },
     { name: "Lena Fischer", racket: "Wilson Pro Staff 97", s: byName("Babolat", "Touch VS"), t: 56, status: "accepted", dueIn: 20 },

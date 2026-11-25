@@ -22,6 +22,7 @@ import { FreshnessRing, statusText, statusTone } from "@/components/FreshnessRin
 import { UpgradeCard } from "@/components/UpgradeCard";
 import { JobForm } from "@/features/JobForm";
 import { RacketForm } from "@/features/RacketForm";
+import { BookRestringButton } from "@/features/market/BookRestring";
 import { useDeleteJob, useDeleteRacket, useRacket, useSaveRacket } from "@/hooks/use-bag";
 import { useMe } from "@/hooks/use-me";
 import { formatDate, money, racketName, setupLabel, tensionLabel } from "@/lib/format";
@@ -160,8 +161,12 @@ export default function RacketDetail() {
           </dl>
         )}
 
+        {(r.status === "overdue" || r.status === "due-soon") && (
+          <BookRestringButton size="lg" className="relative mt-6 w-full" prefill={{ savedRacketId: racket.id, source: "reminder" }} />
+        )}
+
         <div className="relative mt-6 grid grid-cols-2 gap-2 sm:flex">
-          <Button size="lg" className="col-span-2 sm:flex-1" onClick={() => setLogging(true)}>
+          <Button size="lg" variant={r.status === "overdue" || r.status === "due-soon" ? "secondary" : "primary"} className="col-span-2 sm:flex-1" onClick={() => setLogging(true)}>
             <Plus /> Log a restring
           </Button>
           <Button asChild variant="secondary" size="lg">

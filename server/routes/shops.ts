@@ -26,6 +26,7 @@ import { asyncHandler, currentUser, requireAuth } from "../auth";
 import {
   NEXT_STATUS,
   bookingsThisMonth,
+  matchCatalog,
   dueFrom,
   httpError,
   notifyPlayer,
@@ -170,8 +171,10 @@ shopsRouter.post(
     }
     if (!racketLabel) return res.status(400).json({ message: "Which racket? Pick one from your bag or name it.", field: "racketLabel" });
 
-    const [string] = data.stringId ? await db.select().from(strings).where(eq(strings.id, data.stringId)) : [];
+    let [string] = data.stringId ? await db.select().from(strings).where(eq(strings.id, data.stringId)) : [];
     if (data.stringId && !string) return res.status(400).json({ message: "Unknown string", field: "stringId" });
+    // "Book this setup" sends the AI's wording ("Luxilon ALU Power 125"); link it to the catalogue when it names one.
+    if (!string && data.mains) [string] = await matchCatalog([data.mains]);
     const mains = data.mains ?? (string ? `${string.brandName} ${string.model}` : null);
 
     // Sample installs must be at a participating shop and within the programme's units.
@@ -461,7 +464,7 @@ shopsRouter.get(
     const progs = programIds.length
       ? await db.select({ id: samplePrograms.id, title: samplePrograms.title, fee: samplePrograms.installFeeCents }).from(samplePrograms).where(inArray(samplePrograms.id, programIds))
       : [];
-    const byProg = new Map(progs.map((p) => [p.id, p]));
+    const byProg = new Map(progs.map((p) => [p.id, { ...p, payoutCents: Math.round((p.fee * (100 - SAMPLE_PLATFORM_FEE_PCT)) / 100) }]));
     res.json(
       rows.map((r) =>
         queueItem(r.booking, {

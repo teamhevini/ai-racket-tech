@@ -3,8 +3,10 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  ArrowRight,
   Bookmark,
   BookmarkCheck,
+  CalendarCheck,
   Globe,
   LocateFixed,
   Mail,
@@ -71,6 +73,19 @@ export default function Stringers() {
         }
         description="Find a stringer near you, and keep the ones you trust a tap away — with their number, hours and notes."
       />
+
+      <Link href="/shops" className="group mb-6 block">
+        <div className="flex items-center gap-4 rounded-2xl bg-ink px-5 py-4 text-bg transition-transform duration-300 ease-spring group-active:scale-[0.99]">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ball text-ball-ink">
+            <CalendarCheck className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">Book a 10IS stringer online</p>
+            <p className="text-sm text-bg/65">Pick a day, track it live, pick it up.</p>
+          </div>
+          <ArrowRight className="size-5 shrink-0 transition-transform group-hover:translate-x-0.5" />
+        </div>
+      </Link>
 
       <Segmented
         label="Stringers view"

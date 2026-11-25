@@ -2,13 +2,16 @@ import * as React from "react";
 import { Link, useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, Briefcase, Info, MapPin, RotateCcw, Share2, Star } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Briefcase, CalendarCheck, Info, MapPin, RotateCcw, Share2, Star } from "lucide-react";
 import { Page } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge, Card, EmptyState, Skeleton } from "@/components/ui/surface";
 import { Sheet } from "@/components/ui/sheet";
 import { UpgradeCard } from "@/components/UpgradeCard";
 import { JobForm, type JobPrefill } from "@/features/JobForm";
+import { BookRestringButton } from "@/features/market/BookRestring";
+import { WhereToBuy } from "@/features/market/Offers";
+import { SponsoredSlot } from "@/features/market/SponsoredSlot";
 import { useMe } from "@/hooks/use-me";
 import { useBag } from "@/hooks/use-bag";
 import { formatDate } from "@/lib/format";
@@ -174,6 +177,29 @@ export default function RecommendationPage() {
         </Button>
       </div>
 
+      {/* Get it strung */}
+      <Card className="-mt-6 mb-10 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="font-semibold">Get it strung</p>
+          <p className="text-sm text-muted">Book a 10IS stringer with this setup already filled in.</p>
+        </div>
+        <BookRestringButton
+          variant="ink"
+          className="shrink-0"
+          prefill={{
+            savedRacketId: data.isOwner ? data.savedRacketId : null,
+            mains: prefill?.mains,
+            crosses: prefill?.crosses,
+            gauge: prefill?.gauge,
+            tensionMains: prefill?.tensionMains ? Number(prefill.tensionMains) : null,
+            tensionCrosses: prefill?.tensionCrosses ? Number(prefill.tensionCrosses) : null,
+            recommendationRunId: data.isOwner ? data.runId : null,
+          }}
+        >
+          <CalendarCheck /> Book this setup
+        </BookRestringButton>
+      </Card>
+
       <section className="mb-8">
         <p className="eyebrow mb-3">Technician's note</p>
         <p className="text-[1.0625rem] leading-relaxed">{rec.explanation}</p>
@@ -212,6 +238,11 @@ export default function RecommendationPage() {
           </div>
         </section>
       )}
+
+      <WhereToBuy runId={data.runId} />
+
+      {/* The one paid placement: after the pick and alternatives, never above or inside them. */}
+      <SponsoredSlot runId={data.runId} />
 
       <div className="flex justify-center">
         <Button asChild variant="ghost">
