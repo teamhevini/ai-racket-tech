@@ -5,6 +5,9 @@ import { PLANS } from "@shared/tiers";
 import type { UserTier } from "@shared/schema";
 import { asyncHandler, currentUser, loadUser, publicUser, requireAuth } from "../auth";
 import { storage } from "../storage";
+import { db } from "../db";
+import { brands, shops } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { parseBody } from "./util";
 
 export const billingRouter = Router();
@@ -80,6 +83,20 @@ async function applyCheckoutSession(session: Stripe.Checkout.Session): Promise<U
   return nextTier;
 }
 
+/** Shop Pro and brand plans (metadata.kind = "shop" | "brand"). */
+export async function applyBusinessCheckout(session: Stripe.Checkout.Session) {
+  if (session.payment_status === "unpaid") return;
+  const customer = typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
+  const subscription = typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null;
+  const ids = { ...(customer ? { stripeCustomerId: customer } : {}), ...(subscription ? { stripeSubscriptionId: subscription } : {}) };
+  if (session.metadata?.kind === "shop" && session.metadata.shopId) {
+    await db.update(shops).set({ plan: "pro", ...ids }).where(eq(shops.id, Number(session.metadata.shopId)));
+  } else if (session.metadata?.kind === "brand" && session.metadata.brandId) {
+    const plan = session.metadata.plan === "partner" ? "partner" : "insights";
+    await db.update(brands).set({ plan, ...ids }).where(eq(brands.id, Number(session.metadata.brandId)));
+  }
+}
+
 billingRouter.post(
   "/api/checkout/verify",
   requireAuth,
@@ -115,11 +132,16 @@ billingRouter.post(
     }
 
     if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
-      await applyCheckoutSession(event.data.object as Stripe.Checkout.Session);
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (session.metadata?.kind === "shop" || session.metadata?.kind === "brand") await applyBusinessCheckout(session);
+      else await applyCheckoutSession(session);
     } else if (event.type === "customer.subscription.deleted" || event.type === "customer.subscription.updated") {
       const sub = event.data.object as Stripe.Subscription;
       const ended = event.type === "customer.subscription.deleted" || ["canceled", "unpaid", "incomplete_expired"].includes(sub.status);
-      if (ended) {
+      if (ended && (sub.metadata?.kind === "shop" || sub.metadata?.kind === "brand")) {
+        await db.update(shops).set({ plan: "free", stripeSubscriptionId: null }).where(eq(shops.stripeSubscriptionId, sub.id));
+        await db.update(brands).set({ plan: "free", stripeSubscriptionId: null }).where(eq(brands.stripeSubscriptionId, sub.id));
+      } else if (ended) {
         const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
         const byMeta = sub.metadata?.userId ? await storage.getUserById(Number(sub.metadata.userId)) : undefined;
         const user = byMeta ?? (await storage.getUserByStripeCustomerId(customerId));

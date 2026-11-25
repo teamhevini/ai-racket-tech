@@ -11,6 +11,10 @@ import { recommendRouter } from "./routes/recommend";
 import { billingRouter } from "./routes/billing";
 import { adminRouter } from "./routes/admin";
 import { chatRouter } from "./routes/chat";
+import { shopsRouter } from "./routes/shops";
+import { brandsRouter } from "./routes/brands";
+import { marketplaceRouter } from "./routes/marketplace";
+import { seedStrings, seedDemo } from "./b2b-seed";
 import { runReminderJob } from "./reminder-mailer";
 
 declare module "http" {
@@ -21,11 +25,14 @@ declare module "http" {
 
 const isProd = process.env.NODE_ENV === "production";
 
-export async function createApp(opts: { seed?: boolean } = {}) {
+export async function createApp(opts: { seed?: boolean; demo?: boolean } = {}) {
   await initDb();
   if (opts.seed !== false) {
     await seedCatalog();
     await seedAdmin();
+    await seedStrings();
+    // Demo businesses only where asked for (preview, tests) — never in production by default.
+    if (opts.demo ?? process.env.SEED_DEMO === "1") await seedDemo();
   }
 
   const app = express();
@@ -110,6 +117,9 @@ export async function createApp(opts: { seed?: boolean } = {}) {
   app.use(billingRouter);
   app.use(adminRouter);
   app.use(chatRouter);
+  app.use(shopsRouter);
+  app.use(brandsRouter);
+  app.use(marketplaceRouter);
 
   app.use("/api", (_req, res) => {
     res.status(404).json({ message: "Not found" });

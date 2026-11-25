@@ -20,6 +20,8 @@ export interface Entitlements {
   share: boolean;
   chat: boolean;
   emailReminders: boolean;
+  /** Paid players never see sponsored placements. */
+  adFree: boolean;
 }
 
 export function entitlementsFor(tier: UserTier, isAdmin = false): Entitlements {
@@ -36,6 +38,7 @@ export function entitlementsFor(tier: UserTier, isAdmin = false): Entitlements {
     share: isPaid,
     chat: isClub,
     emailReminders: true,
+    adFree: isPaid,
   };
 }
 
@@ -51,6 +54,7 @@ export const PLANS = {
       "Every stringer near you",
       "The full racket catalog",
       "Shareable setup links",
+      "No sponsored placements",
     ],
   },
   club: {
@@ -58,6 +62,75 @@ export const PLANS = {
     price: "$1.99",
     cadence: "per month",
     amountCents: 199,
-    features: ["Everything in Pro", "Live AI racket technician chat", "Priority support"],
+    features: ["Everything in Pro", "Live AI racket technician chat", "No sponsored placements", "Priority support"],
   },
 } as const;
+
+// ─── 10IS for Business ──────────────────────────────────────────────────────
+
+/** Bookings a free shop can take through 10IS per calendar month (walk-ins are unlimited). */
+export const FREE_SHOP_MONTHLY_BOOKINGS = 20;
+/** Insights never show a group with fewer distinct players than this. */
+export const K_ANONYMITY = 5;
+/** 10IS keeps this share of a sample programme's install fee; the stringer gets the rest. */
+export const SAMPLE_PLATFORM_FEE_PCT = 20;
+
+export const SHOP_PLANS = {
+  free: {
+    name: "Shop",
+    price: "$0",
+    cadence: "forever",
+    amountCents: 0,
+    features: [
+      "Public shop page with online booking",
+      `${FREE_SHOP_MONTHLY_BOOKINGS} app bookings a month, unlimited walk-ins`,
+      "Job queue with live status for players",
+      "Your own job history per customer racket",
+    ],
+  },
+  pro: {
+    name: "Shop Pro",
+    price: "$19",
+    cadence: "per month",
+    amountCents: 1900,
+    features: [
+      "Unlimited app bookings",
+      "Full racket history from every stringer (with the player's consent)",
+      "Rebook prompts when your customers' strings are due",
+      "Paid brand sample installs",
+      "Shop insights: regulars, revenue, top strings",
+    ],
+  },
+} as const;
+
+export const BRAND_PLANS = {
+  free: {
+    name: "Listing",
+    price: "$0",
+    cadence: "forever",
+    amountCents: 0,
+    features: ["Verified brand page", "Manage your string catalogue and specs", "Sponsored placements, pay per click", "Campaign reporting"],
+  },
+  insights: {
+    name: "Insights",
+    price: "$490",
+    cadence: "per month",
+    amountCents: 49000,
+    features: [
+      "Everything in Listing",
+      "Demand: how often the AI recommends you vs. the category",
+      "Retention: who re-strings with you and where switchers go",
+      "Ratings by string, level and playstyle",
+      "Anonymised, never below 5 players per group",
+    ],
+  },
+  partner: {
+    name: "Partner",
+    price: "$1,490",
+    cadence: "per month",
+    amountCents: 149000,
+    features: ["Everything in Insights", "Sample programmes through partner stringers", "Sample-to-rebuy tracking", "Quarterly category report"],
+  },
+} as const;
+
+export const SPONSORED_MIN_CPC_CENTS = 80;

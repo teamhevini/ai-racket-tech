@@ -13,6 +13,7 @@ import {
   signIn,
 } from "../auth";
 import { storage } from "../storage";
+import { brandForOwner, shopForOwner } from "../b2b";
 import { parseBody, parseId } from "./util";
 
 export const accountRouter = Router();
@@ -119,7 +120,15 @@ accountRouter.post("/api/auth/logout", (req, res) => {
 accountRouter.get(
   "/api/auth/me",
   asyncHandler(async (req, res) => {
-    res.json(publicUser(await loadUser(req)));
+    const user = await loadUser(req);
+    const base = publicUser(user);
+    if (!user) return res.json({ ...base, shop: null, brand: null });
+    const [shop, brand] = await Promise.all([shopForOwner(user.id), brandForOwner(user.id)]);
+    res.json({
+      ...base,
+      shop: shop ? { id: shop.id, slug: shop.slug, name: shop.name, plan: shop.plan } : null,
+      brand: brand ? { id: brand.id, slug: brand.slug, name: brand.name, kind: brand.kind, plan: brand.plan } : null,
+    });
   }),
 );
 

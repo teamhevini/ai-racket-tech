@@ -20,6 +20,10 @@ export interface Me {
   tier: UserTier;
   isAdmin: boolean;
   entitlements: Entitlements;
+  /** Set when this account runs a stringing shop on 10IS. */
+  shop?: { id: number; slug: string; name: string; plan: "free" | "pro" } | null;
+  /** Set when this account manages a string company, racket brand or retailer. */
+  brand?: { id: number; slug: string; name: string; kind: "string" | "racket" | "retailer"; plan: "free" | "insights" | "partner" } | null;
 }
 
 export interface ReminderJson {
