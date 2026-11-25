@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "./db";
 import {
   bookings,
@@ -78,7 +78,27 @@ async function demoUser(email: string, firstName: string, lastName: string, tier
   return u;
 }
 
+const DEMO_PLAYERS = 520;
+
+/**
+ * Preview only: remove everything the demo seed created so it can be seeded fresh.
+ * Runs only when SEED_DEMO=1 and SEED_DEMO_RESET=1, and touches only demo-owned rows.
+ */
+export async function resetDemo(): Promise<void> {
+  const emails = [...Object.values(DEMO_ACCOUNTS), ...DEMO_SHOPS.map((s) => s.email), DEMO_RETAILER.email, DEMO_RACKET_BRAND.email];
+  await db.delete(brands).where(eq(brands.isDemo, true));
+  await db.delete(strings).where(eq(strings.brandName, "Northline"));
+  await db.delete(users).where(inArray(users.email, [...new Set(emails)]));
+  const hashes = Array.from({ length: DEMO_PLAYERS }, (_, p) => playerHash(`demo-${p}`)!);
+  for (let i = 0; i < hashes.length; i += 200) await db.delete(stringSignals).where(inArray(stringSignals.playerHash, hashes.slice(i, i + 200)));
+  // Seeded example setups have neither a user nor a session; real ones always have one or the other.
+  await db.delete(recommendationRuns).where(and(isNull(recommendationRuns.userId), isNull(recommendationRuns.sessionId)));
+  invalidateCatalog();
+  log("demo data removed", "seed");
+}
+
 export async function seedDemo(): Promise<void> {
+  if (process.env.SEED_DEMO_RESET === "1") await resetDemo();
   const [already] = await db.select({ id: shops.id }).from(shops).where(eq(shops.slug, DEMO_SHOPS[0].slug));
   if (already) return;
   const rand = rng(10_15);
@@ -323,7 +343,7 @@ export async function seedDemo(): Promise<void> {
     for (let k = 0; k < w; k++) weighted.push(s);
   }
   const signals: Array<typeof stringSignals.$inferInsert> = [];
-  for (let p = 0; p < 520; p++) {
+  for (let p = 0; p < DEMO_PLAYERS; p++) {
     const hash = playerHash(`demo-${p}`);
     const level = pick(levels);
     const playstyle = pick(styles);
@@ -362,6 +382,5 @@ export async function seedDemo(): Promise<void> {
     if (rand() < 0.08) await db.insert(campaignEvents).values({ campaignId: softCampaign.id, runId: softRuns[i].id, kind: "click", costCents: softCampaign.cpcCents, fitScore: 80, createdAt: at });
   }
   void offers;
-  void and;
   log(`demo data seeded (${signals.length} signals)`, "seed");
 }

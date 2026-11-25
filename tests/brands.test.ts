@@ -277,3 +277,17 @@ describe("demo accounts", () => {
     expect(q.length).toBeGreaterThanOrEqual(5);
   });
 });
+
+describe("demo reset (preview only)", () => {
+  it("removes only demo-owned data and reseeds cleanly", async () => {
+    const { resetDemo, seedDemo } = await import("../server/b2b-seed");
+    const real = await makeShop();
+    await resetDemo();
+    expect((await db.select().from(brands).where(eq(brands.isDemo, true))).length).toBe(0);
+    const app = await getApp();
+    expect((await request(app).get(`/api/shops/${real.shop.slug}`)).status).toBe(200);
+    expect((await request(app).get("/api/shops/baseline-stringworks")).status).toBe(404);
+    await seedDemo();
+    expect((await request(app).get("/api/shops/baseline-stringworks")).status).toBe(200);
+  });
+});
