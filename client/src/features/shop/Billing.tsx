@@ -90,7 +90,7 @@ export function Billing({ data }: { data: ShopMe }) {
         </div>
         {!pro && limit != null && (
           <div className="mt-6">
-            <div className="flex items-baseline justify-between text-sm">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
               <span>
                 <span className="font-mono font-semibold tabular">{used}</span> of {limit} app bookings this month
               </span>

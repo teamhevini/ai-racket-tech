@@ -112,7 +112,11 @@ export function BookingSheet({
 
   // Default to the only racket in the bag.
   React.useEffect(() => {
-    if (open && racketId === null && !prefill?.racketLabel && rackets.length === 1) setRacketId(rackets[0].id);
+    // Preselect the racket that most needs strings (fewest days left), so the common case is one tap.
+    if (open && racketId === null && !prefill?.racketLabel && rackets.length > 0) {
+      const byDue = [...rackets].sort((a, b) => (a.reminder.daysLeft ?? 9999) - (b.reminder.daysLeft ?? 9999));
+      setRacketId(byDue[0].id);
+    }
   }, [open, racketId, rackets, prefill?.racketLabel]);
 
   const stringCents = choice.kind === "catalog" ? (choice.string.setPriceCents ?? 0) : 0;
