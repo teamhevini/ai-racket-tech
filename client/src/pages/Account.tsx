@@ -458,7 +458,7 @@ export default function Account() {
       </header>
 
       {/* Scrollable tabs — v1 used a fixed sidebar that left phones a sliver of content. */}
-      <div role="tablist" aria-label="Account sections" className="scrollbar-none -mx-4 mb-6 flex gap-2 overflow-x-auto px-4 pb-1">
+      <div role="tablist" aria-label="Account sections" className="mb-6 flex flex-wrap gap-2 pb-1">
         {TABS.map((t) => (
           <button
             key={t.id}

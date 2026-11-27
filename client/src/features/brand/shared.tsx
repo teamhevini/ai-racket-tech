@@ -228,7 +228,7 @@ export function PillTabs<T extends string>({
     strip.scrollTo({ left: el.offsetLeft - strip.clientWidth / 2 + el.clientWidth / 2, behavior: "smooth" });
   }, [value]);
   return (
-    <div role="tablist" aria-label={label} className="scrollbar-none -mx-4 mb-8 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+    <div role="tablist" aria-label={label} className="mb-8 flex flex-wrap gap-2 pb-1">
       {tabs.map((t) => (
         <button
           key={t.id}

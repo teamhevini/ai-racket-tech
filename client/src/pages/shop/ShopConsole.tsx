@@ -92,8 +92,8 @@ export default function ShopConsole() {
         <h1 className="display mt-2 text-[2.5rem] leading-[1.02] sm:text-5xl">{tab.title}</h1>
       </header>
 
-      <nav aria-label="Shop sections" className="scrollbar-none -mx-4 mb-6 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <ul className="flex w-max gap-2">
+      <nav aria-label="Shop sections" className="mb-6">
+        <ul className="flex flex-wrap gap-2">
           {TABS.map((t) => {
             const active = t.key === tabKey;
             const badge = t.key === "queue" && counts?.requested ? counts.requested : null;

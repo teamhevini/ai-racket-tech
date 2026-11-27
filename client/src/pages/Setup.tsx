@@ -477,7 +477,7 @@ function RacketStep({
       {bagRackets.length > 0 && (
         <div>
           <p className="eyebrow mb-3">From my bag</p>
-          <div className="-mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 scrollbar-none">
+          <div className="flex flex-wrap gap-2.5 pb-1">
             {bagRackets.map((r) => {
               const on = state.savedRacketId === r.id;
               return (

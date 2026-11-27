@@ -355,7 +355,7 @@ export function BookingSheet({
             </h3>
             <span className="text-xs text-muted">Ready ~ {readyBy(day, shop, rush)}</span>
           </div>
-          <div role="radiogroup" aria-label="Drop-off day" className="scrollbar-none -mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:-mx-6 sm:px-6">
+          <div role="radiogroup" aria-label="Drop-off day" className="flex flex-wrap gap-2 pb-1">
             {dayChips().map((d) => {
               const on = d.value === day;
               return (
