@@ -193,25 +193,25 @@ footer { margin-top: 56px; color: var(--muted); font-size: 13px; }
 
   <section role="tabpanel" id="decide" aria-labelledby="tab-decide" hidden>
     <div class="decision">
-      <p class="eyebrow">Decide before Mon 30 Nov</p>
-      <h3>Keep the prices as shipped?</h3>
+      <p class="eyebrow">Decided 27 Nov · <span style="color:var(--good)">Shop Pro $39, Insights $490</span></p>
+      <h3>Launch prices</h3>
       <div class="tablewrap">
         <table>
-          <thead><tr><th>Plan</th><th>Shipped now</th><th>Research range</th></tr></thead>
+          <thead><tr><th>Plan</th><th>Launch price</th><th>Research range</th></tr></thead>
           <tbody>
             <tr><td>Player Pro</td><td class="num">$6.99/mo · $49/yr</td><td class="num">$4.99–5.99/mo · $34.99/yr</td></tr>
             <tr><td>Player Club</td><td class="num">$12.99/mo · $99/yr</td><td class="num">$9.99/mo · $69.99/yr</td></tr>
             <tr><td>Pro Lifetime</td><td class="num">$149 once</td><td class="num">$99 founders</td></tr>
-            <tr><td>Shop Pro</td><td class="num">$29/mo</td><td class="num">$39/mo</td></tr>
-            <tr><td>Brand Insights</td><td class="num">$690</td><td class="num">$490 (annual)</td></tr>
-            <tr><td>Brand Partner</td><td class="num">$1,990</td><td class="num">$1,490 (3-month min)</td></tr>
+            <tr><td>Shop Pro</td><td class="num"><b>$39/mo</b> (was $29)</td><td class="num">$39/mo</td></tr>
+            <tr><td>Brand Insights</td><td class="num"><b>$490/mo</b> (was $690)</td><td class="num">$490</td></tr>
+            <tr><td>Brand Partner</td><td class="num">$1,990/mo</td><td class="num">$1,490 (3-month min)</td></tr>
           </tbody>
         </table>
       </div>
       <div class="why">
         <div><b>Reason to keep</b>Already built, tested and in the Terms. Changing prices later is easy; lowering is welcome, raising feels bad. Higher player prices make each early fan count more.</div>
         <div><b>Reason to change</b>Shop Pro at $29 undercharges stringers who make $20+ per racket; $39 is still one restring a month. $690 Insights is hard for a small brand to say yes to before you have data.</div>
-        <div class="pick"><b>My pick for you</b>Keep player prices. Move Shop Pro to $39 and Insights to $490. Ten minutes of code; ask Claude before Monday.</div>
+        <div class="pick"><b>What you chose</b>Keep player prices. Shop Pro is now $39 and Insights $490, live in the app with v2. Revisit after 3 months of real sign-ups.</div>
       </div>
     </div>
 
@@ -259,7 +259,7 @@ const DAYS = [
     ["b-business", "Upgrade a demo shop and a demo brand", "stringer@example.com and brand@example.com, password demo-tennis-2026."],
   ]},
   { id: "sun", title: "Decide, merge, rehearse", when: "Sun 29 Nov · about 1 hour", items: [
-    ["c-prices", "Decide on prices", "See the Decisions tab. Tell Claude if anything changes."],
+    ["c-prices", "Decide on prices", "Decided: Shop Pro $39, Insights $490, player prices unchanged. Already in the code."],
     ["c-merge3", "Merge PR #3 into rebuild/10is-v2", "github.com/teamhevini/ai-racket-tech/pull/3 → wait for green → Merge. Doesn't touch the live site."],
     ["c-walk", "Walk through the preview on your phone", "Setup → recommendation → book a stringer → My bag. Note anything odd."],
   ]},

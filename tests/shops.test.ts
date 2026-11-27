@@ -251,7 +251,7 @@ describe("free shop limits and Shop Pro billing", () => {
     expect(co.status).toBe(200);
     expect(co.body.url).toContain("checkout.stripe.test");
     expect(created[0].mode).toBe("subscription");
-    expect(created[0].line_items[0].price_data.unit_amount).toBe(2900);
+    expect(created[0].line_items[0].price_data.unit_amount).toBe(3900);
     expect(created[0].metadata).toMatchObject({ kind: "shop", shopId: String(owner.shop.id) });
 
     const intruder = await makeShop();

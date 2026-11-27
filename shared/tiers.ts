@@ -110,9 +110,9 @@ export const SHOP_PLANS = {
   },
   pro: {
     name: "Shop Pro",
-    price: "$29",
+    price: "$39",
     cadence: "per month",
-    amountCents: 2900,
+    amountCents: 3900,
     features: [
       "Unlimited app bookings",
       "Full racket history from every stringer (with the player's consent)",
@@ -141,9 +141,9 @@ export const BRAND_PLANS = {
   },
   insights: {
     name: "Insights",
-    price: "$690",
+    price: "$490",
     cadence: "per month",
-    amountCents: 69000,
+    amountCents: 49000,
     features: [
       "Everything in Listing",
       "Demand: how often the AI recommends you vs. the category",

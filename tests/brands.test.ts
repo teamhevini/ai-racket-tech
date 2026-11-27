@@ -312,7 +312,7 @@ describe("brand plan billing", () => {
       },
     } as any);
     expect((await b.agent.post("/api/brand/checkout/insights")).body.url).toContain("stripe.test");
-    expect(created[0].line_items[0].price_data.unit_amount).toBe(69000);
+    expect(created[0].line_items[0].price_data.unit_amount).toBe(49000);
     const v = await b.agent.post("/api/brand/checkout/verify").send({ session_id: "cs_b" });
     expect(v.body.brand.plan).toBe("insights");
     expect((await b.agent.get("/api/brand/insights")).status).toBe(200);
