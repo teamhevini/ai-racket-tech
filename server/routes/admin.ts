@@ -80,7 +80,7 @@ adminRouter.get(
       { key: "STRIPE_WEBHOOK_SECRET", label: "Stripe webhook (upgrades after payment)", ok: set("STRIPE_WEBHOOK_SECRET"), required: true },
       { key: "OPENAI_API_KEY", label: "AI recommendations and chat", ok: set("OPENAI_API_KEY") || set("AI_INTEGRATIONS_OPENAI_API_KEY"), required: true },
       { key: "GOOGLE_MAPS_API_KEY", label: "Stringer search (Google Maps)", ok: set("GOOGLE_MAPS_API_KEY"), required: true },
-      { key: "RESEND_API_KEY", label: "Emails (reminders, invites)", ok: set("RESEND_API_KEY"), required: false },
+      { key: "RESEND_API_KEY", label: "Emails (restring reminders, booking updates)", ok: set("RESEND_API_KEY"), required: false },
       { key: "CRON_SECRET", label: "External reminder trigger", ok: set("CRON_SECRET"), required: false },
       { key: "AFFILIATE_POSTBACK_SECRET", label: "Retailer sale reports", ok: set("AFFILIATE_POSTBACK_SECRET"), required: false },
     ]);
