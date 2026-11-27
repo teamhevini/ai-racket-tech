@@ -308,122 +308,123 @@ function drawMark(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: numb
   ctx.restore();
 }
 
-interface FrameLayout {
-  length: number;
-  perimeter: number;
-  armLen: number; // left arm runs s ∈ [0, armLen], right arm s ∈ [length - armLen, length]
-  hoopStart: number;
-  hoopEnd: number;
-}
-
-/** Paint, bumper, grommet holes and the three side decals, laid out in centimetres. */
-function frameTexture(L: FrameLayout, swoosh: HTMLImageElement | null) {
-  const pxU = Math.min(30, 4096 / L.length);
-  const W = Math.ceil(L.length * pxU);
+function canvasCm(lengthCm: number, perimeter: number) {
+  const pxU = Math.min(30, 4096 / lengthCm);
+  const W = Math.ceil(lengthCm * pxU);
   const H = 512;
-  const pxV = H / L.perimeter;
   const c = document.createElement("canvas");
   c.width = W;
   c.height = H;
   const ctx = c.getContext("2d")!;
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, W, H);
-  // Work in cm: x = along the frame, y = around the beam (0 = back centre).
-  ctx.setTransform(pxU, 0, 0, pxV, 0, 0);
-  const P = L.perimeter;
-  const outer = P * 0.25, front = P * 0.5, inner = P * 0.75;
-  const faceH = BEAM_DEPTH - BEAM_RADIUS * 2 + 0.5; // usable height of a side face
+  // Work in cm: x = along the beam, y = around it (0 = back centre; outer .25P, front .5P, inner .75P).
+  ctx.setTransform(pxU, 0, 0, H / perimeter, 0, 0);
+  return { c, ctx };
+}
 
-  // Black bumper guard over the top of the head (both sides + the crown).
-  const mid = (L.hoopStart + L.hoopEnd) / 2;
-  const bumperHalf = 15;
-  ctx.fillStyle = "#1b1b1b";
-  ctx.fillRect(mid - bumperHalf, outer - faceH * 0.75, bumperHalf * 2, faceH * 1.5);
-  // Black grommet strip along the outer face, with the string holes.
-  ctx.fillStyle = "#242424";
-  ctx.fillRect(L.hoopStart + 1, outer - 0.17, mid - bumperHalf - L.hoopStart - 1, 0.34);
-  ctx.fillRect(mid + bumperHalf, outer - 0.17, L.hoopEnd - 1 - (mid + bumperHalf), 0.34);
-  for (let s = L.hoopStart + 1.2; s < L.hoopEnd - 1.2; s += 1.42) {
-    ctx.fillStyle = "#050505";
-    ctx.beginPath();
-    ctx.ellipse(s, outer, 0.2, 0.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Matching holes on the inner face where the strings enter.
-    ctx.fillStyle = "#8a8a86";
-    ctx.beginPath();
-    ctx.ellipse(s, inner, 0.11, 0.11, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Decals read head → grip (top to bottom) on every side, as on the tech pack.
-  // The beam runs left arm (upwards) → hoop → right arm (downwards), so left-side artwork is turned 180°.
-
-  // Left outside: HEVINI, filling the beam depth.
-  const hevH = 1.5;
-  const hevW = wordmarkWidth(hevH);
-  ctx.save();
-  ctx.translate(L.armLen * 0.55, outer);
-  ctx.scale(-1, -1);
-  drawWordmark(ctx, -hevW / 2, -hevH / 2, hevH, "#111111");
-  ctx.restore();
-
-  // Right outside: SOLUTION in PMS 355C, ONE drawn in outline (lighter), as on the artwork.
-  ctx.save();
-  ctx.translate(L.length - L.armLen * 0.55, outer);
-  ctx.font = "700 0.82px 'Arial Black', 'Helvetica Neue', Arial, sans-serif";
-  ctx.textBaseline = "middle";
-  const spacing = 0.12;
-  const word = (t: string) => [...t].reduce((a, ch) => a + ctx.measureText(ch).width + spacing, 0) - spacing;
-  const total = word("SOLUTION") + 0.55 + word("ONE");
-  let x = -total / 2;
-  ctx.fillStyle = PMS_355C;
-  for (const ch of "SOLUTION") {
-    ctx.fillText(ch, x, 0.04);
-    x += ctx.measureText(ch).width + spacing;
-  }
-  x += 0.55 - spacing;
-  ctx.strokeStyle = PMS_355C;
-  ctx.lineWidth = 0.07;
-  for (const ch of "ONE") {
-    ctx.strokeText(ch, x, 0.04);
-    x += ctx.measureText(ch).width + spacing;
-  }
-  ctx.restore();
-
-  // Right inside: the spec strip (7.6 x 1 cm), two lines, then MADE IN CHINA.
-  ctx.save();
-  ctx.translate(L.length - L.armLen * 0.5, inner);
-  ctx.fillStyle = "#2a2a2a";
-  ctx.textBaseline = "middle";
-  ctx.textAlign = "left";
-  ctx.font = "500 0.3px 'Helvetica Neue', Arial, sans-serif";
-  const cols = [["97 SQ IN", "625.8 CM²"], ["10.6 OZ", "300 G"], ["6 PTS HL", "32.5 CM"], ["50-60 LB", "23-27 KG"], ["16x19", ""]];
-  let cx = -3.8;
-  for (const [a, b] of cols) {
-    ctx.fillText(a, cx, -0.24);
-    if (b) ctx.fillText(b, cx, 0.24);
-    cx += 1.45;
-  }
-  ctx.font = "500 0.14px 'Helvetica Neue', Arial, sans-serif";
-  ctx.fillText("MADE IN CHINA", cx + 0.1, 0);
-  ctx.restore();
-
-  // Front view: HEVINI also runs up the front of the left throat arm.
-  const frontH = 0.78;
-  ctx.save();
-  ctx.translate(L.armLen * 0.5, front);
-  ctx.scale(-1, -1);
-  drawWordmark(ctx, -wordmarkWidth(frontH) / 2, -frontH / 2, frontH, "#111111");
-  ctx.restore();
-  void swoosh;
-
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+function toTexture(c: HTMLCanvasElement) {
   const tex = new CanvasTexture(c);
   tex.colorSpace = SRGBColorSpace;
   tex.flipY = false;
   tex.anisotropy = 8;
   tex.minFilter = LinearMipmapLinearFilter;
   return tex;
+}
+
+/** The head hoop: black bumper over the crown, grommet strip and string holes all the way round. */
+function hoopTexture(lengthCm: number, perimeter: number) {
+  const { c, ctx } = canvasCm(lengthCm, perimeter);
+  const P = perimeter;
+  const outer = P * 0.25, inner = P * 0.75;
+  const faceH = BEAM_DEPTH - BEAM_RADIUS * 2 + 0.5;
+  const top = lengthCm / 2; // the hoop starts at the bottom of the bridge, so the crown is halfway round
+  const bumperHalf = 15;
+  ctx.fillStyle = "#1b1b1b";
+  ctx.fillRect(top - bumperHalf, outer - faceH * 0.75, bumperHalf * 2, faceH * 1.5);
+  ctx.fillStyle = "#242424";
+  ctx.fillRect(0, outer - 0.17, top - bumperHalf, 0.34);
+  ctx.fillRect(top + bumperHalf, outer - 0.17, lengthCm - top - bumperHalf, 0.34);
+  // Holes are spaced symmetrically about the crown so both sides match.
+  const step = 1.42;
+  for (let k = -Math.floor(top / step); k <= Math.floor(top / step); k++) {
+    const sPos = top + k * step;
+    ctx.fillStyle = "#050505";
+    ctx.beginPath();
+    ctx.ellipse(sPos, outer, 0.2, 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#8a8a86";
+    ctx.beginPath();
+    ctx.ellipse(sPos, inner, 0.11, 0.11, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return toTexture(c);
+}
+
+/**
+ * A throat arm's artwork, reading head → grip (top to bottom) as on the tech pack.
+ * `visible` is the arm length before it merges into the hoop.
+ */
+function armTexture(side: "left" | "right", lengthCm: number, visible: number, perimeter: number) {
+  const { c, ctx } = canvasCm(lengthCm, perimeter);
+  const P = perimeter;
+  const outer = P * 0.25, front = P * 0.5, inner = P * 0.75;
+  // Left arm: s runs up the arm, so turn the artwork 180° to read downwards.
+  // Right arm: s already runs down the arm (head → grip), and its visible part is at the end.
+  const mid = side === "left" ? visible * 0.5 : lengthCm - visible * 0.5;
+  const at = (_s: number, v: number, draw: () => void) => {
+    ctx.save();
+    ctx.translate(mid, v);
+    if (side === "left") ctx.scale(-1, -1);
+    draw();
+    ctx.restore();
+  };
+  if (side === "left") {
+    // Left outside: HEVINI, filling the beam depth. Plus the front of the arm, as in the front view.
+    const hevH = 1.5;
+    at(visible * 0.5, outer, () => drawWordmark(ctx, -wordmarkWidth(hevH) / 2, -hevH / 2, hevH, "#111111"));
+    const frontH = 0.78;
+    at(visible * 0.5, front, () => drawWordmark(ctx, -wordmarkWidth(frontH) / 2, -frontH / 2, frontH, "#111111"));
+  } else {
+    // Right outside: SOLUTION in PMS 355C, ONE in outline (lighter), as on the artwork.
+    at(visible * 0.5, outer, () => {
+      ctx.font = "700 0.82px 'Arial Black', 'Helvetica Neue', Arial, sans-serif";
+      ctx.textBaseline = "middle";
+      const spacing = 0.12;
+      const word = (t: string) => [...t].reduce((a, ch) => a + ctx.measureText(ch).width + spacing, 0) - spacing;
+      const total = word("SOLUTION") + 0.55 + word("ONE");
+      let x = -total / 2;
+      ctx.fillStyle = PMS_355C;
+      for (const ch of "SOLUTION") {
+        ctx.fillText(ch, x, 0.04);
+        x += ctx.measureText(ch).width + spacing;
+      }
+      x += 0.55 - spacing;
+      ctx.strokeStyle = PMS_355C;
+      ctx.lineWidth = 0.07;
+      for (const ch of "ONE") {
+        ctx.strokeText(ch, x, 0.04);
+        x += ctx.measureText(ch).width + spacing;
+      }
+    });
+    // Right inside: the spec strip (7.6 x 1 cm), two lines, then MADE IN CHINA.
+    at(visible * 0.5, inner, () => {
+      ctx.fillStyle = "#2a2a2a";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.font = "500 0.3px 'Helvetica Neue', Arial, sans-serif";
+      const cols = [["97 SQ IN", "625.8 CM²"], ["10.6 OZ", "300 G"], ["6 PTS HL", "32.5 CM"], ["50-60 LB", "23-27 KG"], ["16x19", ""]];
+      let cx = -3.8;
+      for (const [a, b] of cols) {
+        ctx.fillText(a, cx, -0.24);
+        if (b) ctx.fillText(b, cx, 0.24);
+        cx += 1.45;
+      }
+      ctx.font = "500 0.14px 'Helvetica Neue', Arial, sans-serif";
+      ctx.fillText("MADE IN CHINA", cx + 0.1, 0);
+    });
+  }
+  return toTexture(c);
 }
 
 /** Black grip with the diagonal overgrip wrap (period ~2.6 cm). */
@@ -540,12 +541,16 @@ export default function HoloRacket({ specs, className, compact }: { specs: HoloS
     const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     scene.environment = envTex;
     scene.environmentIntensity = 0.75;
-    const key = new DirectionalLight(0xffffff, 2.1);
-    key.position.set(-70, 110, 90);
-    scene.add(key);
-    const rim = new DirectionalLight(0xdfe8ff, 1.1);
-    rim.position.set(90, 10, -60);
-    scene.add(rim);
+    // Symmetric studio lighting: a soft frontal key from above, matched side fills, a rim from behind.
+    const key = new DirectionalLight(0xffffff, 1.7);
+    key.position.set(0, 120, 140);
+    const fillL = new DirectionalLight(0xffffff, 0.75);
+    fillL.position.set(-130, 40, 70);
+    const fillR = new DirectionalLight(0xffffff, 0.75);
+    fillR.position.set(130, 40, 70);
+    const rim = new DirectionalLight(0xdfe8ff, 0.8);
+    rim.position.set(0, 60, -140);
+    scene.add(key, fillL, fillR, rim);
     scene.add(new AmbientLight(0xffffff, 0.08));
 
     const camera = new PerspectiveCamera(26, 1, 10, 600);
@@ -559,62 +564,55 @@ export default function HoloRacket({ specs, className, compact }: { specs: HoloS
     scene.add(racket);
     const disposables: Array<{ dispose: () => void }> = [envTex, pmrem];
 
-    // ── Frame: left arm → hoop over the top → right arm, one continuous beam.
+    // ── Frame, built like the real thing: one closed oval hoop (its bottom is the bridge),
+    // and two straight throat arms that curve into the hoop at the shoulders and run inside it.
     const hoop = (deg: number) => {
       const a = (deg * Math.PI) / 180;
       return new Vector3(Math.sin(a) * rx, cy + Math.cos(a) * ry, 0);
     };
-    const JOIN = 146; // where the throat arms leave the hoop
-    const armPts = (side: -1 | 1) => {
-      const top = hoop(side * JOIN);
-      const bottom = new Vector3(side * 0.85, GRIP_TOP + 0.4, 0);
-      const pts: Vector3[] = [];
-      for (const f of [0, 0.18, 0.42, 0.68, 0.88]) {
-        // Gently concave arms, as on the tech pack front view.
-        const bow = Math.sin(f * Math.PI) * 0.35 * -side;
-        pts.push(new Vector3(bottom.x + (top.x - bottom.x) * f + bow, bottom.y + (top.y - bottom.y) * f, 0));
-      }
-      return pts;
-    };
-    const framePts: Vector3[] = [...armPts(-1)];
-    for (let d = -JOIN; d <= JOIN; d += 4) framePts.push(hoop(d));
-    framePts.push(...armPts(1).reverse());
-    const frameCurve = new CatmullRomCurve3(framePts, false, "centripetal");
+    const hoopPts: Vector3[] = [];
+    for (let d = 180; d < 540; d += 3) hoopPts.push(hoop(d)); // starts at the bottom of the bridge
+    const hoopCurve = new CatmullRomCurve3(hoopPts, true, "centripetal");
     const beam = roundedRect(BEAM_WIDTH / 2, BEAM_DEPTH / 2, BEAM_RADIUS, 36);
-    const outwardFrame = (p: Vector3) => new Vector2(p.x, p.y - 30).normalize();
-    const frame = sweep(frameCurve, () => beam.pts, 420, outwardFrame);
-    // Where the hoop starts/ends along the beam, for the artwork layout.
-    const armLen = new CatmullRomCurve3(armPts(-1).concat([hoop(-JOIN + 4)]), false, "centripetal").getLength() - 1.2;
-    const layout: FrameLayout = {
-      length: frame.length,
-      perimeter: beam.perimeter,
-      armLen,
-      hoopStart: armLen,
-      hoopEnd: frame.length - armLen,
-    };
-    normaliseU(frame.geo, frame.length);
-    const paint = new MeshPhysicalMaterial({
-      color: PAINT,
-      roughness: 0.5,
-      metalness: 0,
-      clearcoat: 0.12,
-      clearcoatRoughness: 0.55,
-      sheen: 0.15,
-      sheenRoughness: 0.8,
-    });
-    const frameMesh = new Mesh(frame.geo, paint);
-    body.add(frameMesh);
+    const hoopGeo = sweep(hoopCurve, () => beam.pts, 360, (p) => new Vector2(p.x / rx, (p.y - cy) / ry).normalize());
+    normaliseU(hoopGeo.geo, hoopGeo.length);
 
-    // Throat bridge: the lower arc of the head, closing the string bed.
-    const bridgeCurve = new CatmullRomCurve3(
-      [153, 164, 175, 185, 196, 207].map((d) => hoop(d)),
-      false,
-      "centripetal",
-    );
-    const bridgeBeam = roundedRect(BEAM_WIDTH / 2, BEAM_DEPTH / 2 - 0.08, BEAM_RADIUS, 28);
-    const bridge = sweep(bridgeCurve, () => bridgeBeam.pts, 60, (p) => new Vector2(p.x * 0.02, p.y - cy).normalize());
-    const bridgeMat = new MeshPhysicalMaterial({ color: PAINT, roughness: 0.5, clearcoat: 0.12, clearcoatRoughness: 0.55 });
-    body.add(new Mesh(bridge.geo, bridgeMat));
+    const SHOULDER = 152; // where an arm reaches the hoop (deg from the crown)
+    const armCurve = (side: -1 | 1) => {
+      const b = new Vector3(side * 0.85, GRIP_TOP + 0.2, 0);
+      const sh = hoop(side * SHOULDER);
+      const lerp = (f: number) => new Vector3(b.x + (sh.x - b.x) * f, b.y + (sh.y - b.y) * f, 0);
+      // Straight from the collar to just short of the shoulder, then along the hoop for a few cm.
+      const pts = [b, lerp(0.3), lerp(0.6), lerp(0.86), sh, hoop(side * (SHOULDER - 7)), hoop(side * (SHOULDER - 14)), hoop(side * (SHOULDER - 21))];
+      // The left arm runs grip → head and the right arm head → grip, like one beam drawn round the
+      // racket. Mirrored arms built the same way would have their surfaces facing inwards.
+      return new CatmullRomCurve3(side < 0 ? pts : pts.reverse(), false, "centripetal");
+    };
+    const leftCurve = armCurve(-1);
+    const armVisible = new CatmullRomCurve3(leftCurve.points.slice(0, 5), false, "centripetal").getLength();
+    // Inside the hoop the arm is a touch slimmer, so the two surfaces never fight.
+    const armProfile = (f: number, len: number, hoopAtStart: boolean) => {
+      const sPos = hoopAtStart ? (1 - f) * len : f * len;
+      const t = Math.min(1, Math.max(0, (sPos - (armVisible - 0.6)) / 2.4));
+      const k = 1 - 0.07 * t * t * (3 - 2 * t);
+      return roundedRect((BEAM_WIDTH / 2) * k, (BEAM_DEPTH / 2) * k, BEAM_RADIUS * k, 36).pts;
+    };
+    const outwardArm = (p: Vector3) => new Vector2(p.x, p.y - 30).normalize();
+    const makeArm = (curve: CatmullRomCurve3, hoopAtStart: boolean) => {
+      const len = curve.getLength();
+      const g = sweep(curve, (f) => armProfile(f, len, hoopAtStart), 140, outwardArm);
+      normaliseU(g.geo, g.length);
+      return g;
+    };
+    const leftArm = makeArm(leftCurve, false);
+    const rightArm = makeArm(armCurve(1), true);
+
+    const paintParams = { color: PAINT, roughness: 0.5, metalness: 0, clearcoat: 0.12, clearcoatRoughness: 0.55, sheen: 0.15, sheenRoughness: 0.8 };
+    const hoopMat = new MeshPhysicalMaterial({ ...paintParams, map: hoopTexture(hoopGeo.length, beam.perimeter) });
+    const leftMat = new MeshPhysicalMaterial({ ...paintParams, map: armTexture("left", leftArm.length, armVisible, beam.perimeter) });
+    const rightMat = new MeshPhysicalMaterial({ ...paintParams, map: armTexture("right", rightArm.length, armVisible, beam.perimeter) });
+    body.add(new Mesh(hoopGeo.geo, hoopMat), new Mesh(leftArm.geo, leftMat), new Mesh(rightArm.geo, rightMat));
+    const bridgeMat = new MeshPhysicalMaterial(paintParams);
 
     // Shaft collar: the white neck where the arms meet the handle.
     const collarTop = GRIP_TOP + 3.4;
@@ -634,7 +632,7 @@ export default function HoloRacket({ specs, className, compact }: { specs: HoloS
     // Its edges run along the arms' inner faces (overlapping slightly), so it merges with no seam.
     const armInner: Vector3[] = [];
     for (let i = 0; i <= 120; i++) {
-      const p = frameCurve.getPointAt((i / 120) * (armLen / frame.length) * 1.2);
+      const p = leftCurve.getPointAt(i / 120);
       if (p.y <= 25.6) armInner.push(p);
     }
     const yBottom = collarTop - 0.8;
@@ -731,9 +729,7 @@ export default function HoloRacket({ specs, className, compact }: { specs: HoloS
     const bed = new Mesh(new ShapeGeometry(bedShape, 48), new MeshBasicMaterial({ visible: false, side: DoubleSide }));
     body.add(bed);
 
-    // Artwork: frame decals, throat mark, butt cap. Repainted once the logo image loads.
-    let frameTex = frameTexture(layout, null);
-    paint.map = frameTex;
+    // Artwork: throat mark and butt cap, repainted once the logo image loads.
     const throatMat = new MeshStandardMaterial({ transparent: true, roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2 });
     const buttMat = new MeshStandardMaterial({ roughness: 0.55, polygonOffset: true, polygonOffsetFactor: -2 });
     const throatMark = new Mesh(new CircleGeometry(0.62, 40), throatMat);
@@ -753,16 +749,11 @@ export default function HoloRacket({ specs, className, compact }: { specs: HoloS
     paintMarks(null);
     const swoosh = new Image();
     swoosh.decoding = "async";
-    swoosh.onload = () => {
-      frameTex.dispose();
-      frameTex = frameTexture(layout, swoosh);
-      paint.map = frameTex;
-      paint.needsUpdate = true;
-      paintMarks(swoosh);
-    };
+    swoosh.onload = () => paintMarks(swoosh);
     swoosh.src = swooshUrl;
 
-    disposables.push(paint, bridgeMat, gripMat, gripTex, tapeMat, capMat, stringMat, throatMat, buttMat, { dispose: () => frameTex.dispose() });
+    for (const m of [hoopMat, leftMat, rightMat]) disposables.push(m.map!, m);
+    disposables.push(bridgeMat, gripMat, gripTex, tapeMat, capMat, stringMat, throatMat, buttMat);
 
     // ── Interaction
     // ?racketView=front|left|right|back|top pins a tech-pack angle (used to check the model against the artwork).
