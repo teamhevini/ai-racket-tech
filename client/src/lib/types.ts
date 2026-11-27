@@ -68,7 +68,7 @@ export interface RacketDetail {
   } | null;
 }
 
-export type MyStringer = SavedStringerJson & { jobCount: number; lastJobAt: string | null };
+export type MyStringer = SavedStringerJson & { jobCount: number; lastJobAt: string | null; shopSlug: string | null };
 
 export interface PlaceResult {
   name: string;

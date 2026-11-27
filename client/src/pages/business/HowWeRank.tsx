@@ -44,6 +44,7 @@ export default function HowWeRank() {
           <li>It's a type of string the technician itself recommended for you, and it isn't your own pick sold back to you.</li>
           <li>It scores at least 70 out of 100 for fit with your game and your recommendation.</li>
           <li>The campaign has budget left this month. Brands can only narrow who sees it, never widen the fit check.</li>
+          <li>We've verified the brand is who it says it is, so nobody can advertise under a lookalike name.</li>
         </ul>
         <p>
           When one qualifies, you see <strong>at most one per setup</strong>, shown <strong>after</strong> your recommendation and its
@@ -58,7 +59,8 @@ export default function HowWeRank() {
         <p>
           When we show where to buy a string, some links are affiliate links: if you buy, the retailer may pay 10IS a commission. It costs you
           nothing extra. Offers are sorted by stock and then price, cheapest first — never by commission — and every outbound link is marked{" "}
-          <code>rel="sponsored"</code> so search engines know too. The disclosure appears next to the links every time.
+          <code>rel="sponsored"</code> so search engines know too. The disclosure appears next to the links every time. Only retailers we've verified can list
+          offers, and every link must go to their own website.
         </p>
 
         <h2>Sample programmes</h2>

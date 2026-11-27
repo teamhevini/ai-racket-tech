@@ -4,6 +4,9 @@ import { FREE_STRINGER_RESULTS } from "@shared/tiers";
 import { asyncHandler, currentUser, loadUser, rateLimit, requireAuth } from "../auth";
 import { storage } from "../storage";
 import { parseBody, parseId } from "./util";
+import { inArray } from "drizzle-orm";
+import { db } from "../db";
+import { shops } from "@shared/schema";
 
 export const stringersRouter = Router();
 
@@ -136,8 +139,17 @@ stringersRouter.get(
       if (!u.last || j.strungAt > u.last) u.last = j.strungAt;
       usage.set(j.stringerId, u);
     }
+    // Stringers who are on 10IS can be booked in-app; the card needs their shop address.
+    const shopIds = [...new Set(list.map((s) => s.shopId).filter((x): x is number => !!x))];
+    const linked = shopIds.length ? await db.select({ id: shops.id, slug: shops.slug }).from(shops).where(inArray(shops.id, shopIds)) : [];
+    const slugById = new Map(linked.map((s) => [s.id, s.slug]));
     res.json(
-      list.map((s) => ({ ...s, jobCount: usage.get(s.id)?.count ?? 0, lastJobAt: usage.get(s.id)?.last ?? null })),
+      list.map((s) => ({
+        ...s,
+        shopSlug: s.shopId ? slugById.get(s.shopId) ?? null : null,
+        jobCount: usage.get(s.id)?.count ?? 0,
+        lastJobAt: usage.get(s.id)?.last ?? null,
+      })),
     );
   }),
 );

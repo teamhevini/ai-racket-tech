@@ -34,6 +34,22 @@ describe("invite your stringer", () => {
     const after = (await p.agent.get(`/api/bookings/suggest?racketId=${racket.id}`)).body;
     expect(after.shop.slug).toBe(shop.body.slug);
     expect(after.invitable).toBeNull();
+    // The hand-logged job had no catalogue link; the suggestion resolves it for an accurate estimate.
+    expect(after.prefill.tensionMains).toBe(52);
     expect((await p.agent.post(`/api/stringers/saved/${stringer.id}/invite`)).status).toBe(409);
+  });
+
+  it("a stringer who already has a shop can accept an invite from a customer", async () => {
+    const p = await signUp();
+    const stringer = (await p.agent.post("/api/stringers/saved").send({ stringerName: "Ana" })).body;
+    const code = (await p.agent.post(`/api/stringers/saved/${stringer.id}/invite`)).body.code;
+    const ana = await signUp();
+    const shop = (await ana.agent.post("/api/shop").send({ name: "Ana Strings" })).body;
+    expect((await p.agent.post(`/api/shop/invites/${code}/accept`)).status).toBe(404); // the player has no shop
+    const ok = await ana.agent.post(`/api/shop/invites/${code}/accept`);
+    expect(ok.status).toBe(200);
+    expect((await ana.agent.post(`/api/shop/invites/${code}/accept`)).status).toBe(409);
+    const mine = (await p.agent.get("/api/stringers/saved")).body;
+    expect(mine[0].shopSlug).toBe(shop.slug);
   });
 });

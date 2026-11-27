@@ -281,3 +281,14 @@ describe("booking the AI's setup", () => {
     expect(res.body.priceCents).toBe(2000 + (hyper.setPriceCents ?? 0));
   });
 });
+
+describe("rebooking a hand-logged setup", () => {
+  it("resolves the last job's string text to the catalogue so the price estimate is right", async () => {
+    const p = await signUp();
+    const racket = (await p.agent.post("/api/bag/rackets").send({ nickname: "R" })).body;
+    await p.agent.post(`/api/bag/rackets/${racket.id}/jobs`).send({ strungAt: new Date(Date.now() - 30 * 86_400_000).toISOString(), mains: "Wilson NXT", tensionMains: 53 });
+    const [nxt] = await db.select().from(strings).where(eq(strings.model, "NXT"));
+    const s = (await p.agent.get(`/api/bookings/suggest?racketId=${racket.id}`)).body;
+    expect(s.prefill.stringId).toBe(nxt.id);
+  });
+});

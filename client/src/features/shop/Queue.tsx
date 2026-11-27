@@ -127,7 +127,9 @@ export function Queue() {
         )}
       </div>
 
-      {/* Thumb-reachable walk-in button on phones, sitting above the tab bar. */}
+      {/* Thumb-reachable walk-in button on phones, sitting above the tab bar.
+          Hidden on an empty queue, where the empty state has its own big button. */}
+      {!(view === "active" && !active.isLoading && jobs.length === 0) && (
       <button
         type="button"
         onClick={() => setWalkIn(true)}
@@ -135,6 +137,7 @@ export function Queue() {
       >
         <Plus className="size-6" /> Walk-in
       </button>
+      )}
 
       <JobSheet id={openId} onClose={() => setOpenId(null)} onMachine={openMachine} />
       <WalkInSheet open={walkIn} onOpenChange={setWalkIn} />

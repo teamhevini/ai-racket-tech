@@ -261,6 +261,14 @@ export async function seedDemo(): Promise<void> {
   // Sam (free) last strung ~4 months ago at Net Cord — the reminder is overdue.
   await pastBooking({ shop: netcord, user: free, racket: freeRacket, name: "Sam Rivera", racketLabel: "My racket · Head Speed MP", string: synth, tension: 55, at: daysAgo(118), rating: 4, stringerId: freeStringer.id });
 
+  // Sam's backup was last strung by a club stringer who isn't on 10IS yet: the invite flow.
+  const [clash] = await db.insert(savedRackets).values({ userId: free.id, nickname: "Backup", brand: "Wilson", model: "Clash 100 v2", headSize: "100", stringPattern: "16x19", hoursPerWeek: 3 }).returning();
+  const [dee] = await db
+    .insert(savedStringers)
+    .values({ userId: free.id, stringerName: "Dee Okoro", stringerAddress: "Laurelhurst Tennis Club, Portland", phone: "+1 555 0142", notes: "Club stringer, leave it in the pro shop" })
+    .returning();
+  await db.insert(stringJobs).values({ userId: free.id, savedRacketId: clash.id, stringerId: dee.id, strungAt: daysAgo(130), mains: "Wilson NXT", gauge: "16", tensionMains: 53, tensionCrosses: 53, price: 42, rating: 4 });
+
   // Baseline's live queue
   const now = Date.now();
   const live: Array<{ name: string; racket: string; s: TennisString; t: number; status: BookingStatus; dueIn: number; rush?: boolean; user?: typeof player; racketRow?: typeof aero; note?: string }> = [
@@ -350,7 +358,7 @@ export async function seedDemo(): Promise<void> {
     const region = pick(regions);
     const racketBrand = pick(frames);
     let current = pick(weighted);
-    let t = 5 + Math.floor(rand() * 75);
+    let t = 3 + Math.floor(rand() * 84); // spread over the full 12-week window
     const sessions = 1 + Math.floor(rand() * 4);
     for (let k = 0; k < sessions && t > 0; k++) {
       const at = daysAgo(t);

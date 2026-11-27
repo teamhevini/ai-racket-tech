@@ -305,8 +305,10 @@ shopsRouter.get(
         .orderBy(desc(stringJobs.strungAt))
         .limit(1);
       if (job) {
+        // Hand-logged jobs only have text ("Wilson NXT"); resolve it so the estimate includes the string.
+        const stringId = job.job.stringId ?? (job.job.mains ? (await matchCatalog([job.job.mains]))[0]?.id ?? null : null);
         prefill = {
-          stringId: job.job.stringId,
+          stringId,
           mains: job.job.mains,
           crosses: job.job.crosses,
           gauge: job.job.gauge,
@@ -943,6 +945,20 @@ shopsRouter.get(
       city: row.stringer.stringerAddress?.split(",").map((s) => s.trim()).filter(Boolean).at(-1) ?? null,
       accepted: !!row.invite.acceptedAt,
     });
+  }),
+);
+
+/** A stringer who already has a shop opens a customer's invite: link it to the existing shop. */
+shopsRouter.post(
+  "/api/shop/invites/:code/accept",
+  asyncHandler(async (req, res) => {
+    const shop = await requireShop(req);
+    const [invite] = await db.select().from(stringerInvites).where(eq(stringerInvites.code, String(req.params.code).slice(0, 40)));
+    if (!invite) return res.status(404).json({ message: "This invite link isn't valid." });
+    if (invite.acceptedAt) return res.status(409).json({ message: "This invite has already been used." });
+    if (invite.inviterUserId === currentUser(req).id) return res.status(400).json({ message: "That's your own invite." });
+    await acceptInvite(invite.code, shop, currentUser(req).id);
+    res.json({ linked: true });
   }),
 );
 

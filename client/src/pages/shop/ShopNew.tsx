@@ -1,8 +1,8 @@
 import * as React from "react";
-import { useMutation } from "@tanstack/react-query";
-import { Link, Redirect, useLocation } from "wouter";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Link, Redirect, useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
-import { ArrowRight, CalendarCheck, ClipboardList, History, Store } from "lucide-react";
+import { ArrowRight, CalendarCheck, ClipboardList, History, Store, UserRoundCheck } from "lucide-react";
 import { FREE_SHOP_MONTHLY_BOOKINGS } from "@shared/tiers";
 import { Page } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -24,12 +24,31 @@ const PERKS = [
   { icon: History, title: "Every racket's story", body: "Your notes and past jobs on each customer's racket, ready the next time it's on your bench." },
 ];
 
+interface InviteInfo {
+  inviterFirstName: string;
+  stringerName: string;
+  city: string | null;
+  accepted: boolean;
+}
+
 export default function ShopNew() {
   const { me, signedIn, loading } = useMe();
   const refreshMe = useRefreshMe();
   const [, navigate] = useLocation();
+  const inviteCode = new URLSearchParams(useSearch()).get("invite")?.slice(0, 40) || null;
+  const invite = useQuery<InviteInfo>({ queryKey: [`/api/invites/${inviteCode}`], enabled: !!inviteCode, staleTime: Infinity });
+  const validInvite = invite.data && !invite.data.accepted ? invite.data : null;
+  const back = inviteCode ? `/shop/new?invite=${encodeURIComponent(inviteCode)}` : "/shop/new";
   const [name, setName] = React.useState("");
   const [city, setCity] = React.useState("");
+  // Prefill from the customer's invite (they saved this stringer by name), once.
+  const prefilled = React.useRef(false);
+  React.useEffect(() => {
+    if (!validInvite || prefilled.current) return;
+    prefilled.current = true;
+    setName((n) => n || validInvite.stringerName);
+    setCity((c) => c || validInvite.city || "");
+  }, [validInvite]);
   const [address, setAddress] = React.useState("");
   const [phone, setPhone] = React.useState("");
   const [labour, setLabour] = React.useState("20");
@@ -51,11 +70,16 @@ export default function ShopNew() {
         certifications: certifications.trim() || undefined,
         machine: machine.trim() || undefined,
         acceptingBookings: true,
+        inviteCode: validInvite ? inviteCode ?? undefined : undefined,
       });
     },
     onSuccess: async () => {
       await refreshMe();
-      toast.success(`${name.trim()} is open`, { description: "Add your first walk-in or share your page to start taking bookings." });
+      toast.success(`${name.trim()} is open`, {
+        description: validInvite
+          ? `${validInvite.inviterFirstName} can now book you straight from their reminder.`
+          : "Add your first walk-in or share your page to start taking bookings.",
+      });
       navigate("/shop");
     },
     onError: (e) => {
@@ -69,6 +93,7 @@ export default function ShopNew() {
     },
   });
 
+  if (me.shop && validInvite) return <LinkExistingShop code={inviteCode!} invite={validInvite} shopName={me.shop.name} />;
   if (me.shop) return <Redirect to="/shop" />;
 
   const fieldError = (f: string) => (error instanceof ApiError && error.field === f ? error.message : null);
@@ -77,6 +102,21 @@ export default function ShopNew() {
     <Page>
       <div className="grid gap-10 lg:grid-cols-[1fr_minmax(0,30rem)] lg:gap-16">
         <section className="animate-fade-up lg:pt-6">
+          {validInvite && (
+            <div className="mb-6 flex max-w-lg items-start gap-3 rounded-2xl bg-grass-soft px-4 py-3.5 text-grass">
+              <UserRoundCheck className="mt-0.5 size-5 shrink-0" aria-hidden />
+              <p className="text-sm leading-relaxed">
+                <span className="font-semibold">{validInvite.inviterFirstName} invited you.</span> They already track their rackets in 10IS. Open your
+                shop (it's free) and their next restring can be booked with you in two taps, with live status so they know when it's ready.
+              </p>
+            </div>
+          )}
+          {invite.data?.accepted && (
+            <p className="mb-6 max-w-lg rounded-2xl bg-surface-2 px-4 py-3 text-sm text-muted">This invite has already been used, but you can still open your own shop below.</p>
+          )}
+          {invite.isError && (
+            <p className="mb-6 max-w-lg rounded-2xl bg-surface-2 px-4 py-3 text-sm text-muted">That invite link isn't valid any more, but you can still open your shop below.</p>
+          )}
           <p className="eyebrow">10IS for Business</p>
           <h1 className="display mt-3 text-[2.75rem] leading-[1.02] sm:text-6xl">
             Open your <em className="text-brand">stringing</em> shop.
@@ -111,12 +151,12 @@ export default function ShopNew() {
               <p className="mt-2 text-sm leading-relaxed text-muted">Your shop lives on a 10IS account — the same one you'd use as a player. Create one free, then come straight back here.</p>
               <div className="mt-6 flex flex-col gap-2">
                 <Button asChild size="lg">
-                  <Link href="/signup?next=/shop/new">
+                  <Link href={`/signup?next=${encodeURIComponent(back)}`}>
                     Create a free account <ArrowRight />
                   </Link>
                 </Button>
                 <Button asChild variant="ghost" size="lg">
-                  <Link href="/login?next=/shop/new">I already have an account</Link>
+                  <Link href={`/login?next=${encodeURIComponent(back)}`}>I already have an account</Link>
                 </Button>
               </div>
             </Card>
@@ -185,6 +225,41 @@ export default function ShopNew() {
           )}
         </div>
       </div>
+    </Page>
+  );
+}
+
+/** Already on 10IS: one tap links the inviting customer to this shop. */
+function LinkExistingShop({ code, invite, shopName }: { code: string; invite: InviteInfo; shopName: string }) {
+  const [, navigate] = useLocation();
+  const link = useMutation({
+    mutationFn: () => api("POST", `/api/shop/invites/${encodeURIComponent(code)}/accept`),
+    onSuccess: () => {
+      toast.success(`Linked with ${invite.inviterFirstName}`, { description: "Their next restring can be booked with you in two taps." });
+      navigate("/shop");
+    },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : "Couldn't link. Try again."),
+  });
+  return (
+    <Page narrow>
+      <Card className="mt-6 p-6 sm:p-8">
+        <span className="grid size-12 place-items-center rounded-full bg-grass-soft text-grass">
+          <UserRoundCheck className="size-5" />
+        </span>
+        <h1 className="display mt-5 text-4xl leading-tight">{invite.inviterFirstName} invited you</h1>
+        <p className="mt-3 text-[0.9375rem] leading-relaxed text-muted">
+          You're already on 10IS as <span className="font-semibold text-ink">{shopName}</span>. Link {invite.inviterFirstName} to your shop and their reminder
+          will book you directly.
+        </p>
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+          <Button size="lg" loading={link.isPending} onClick={() => link.mutate()}>
+            Link {invite.inviterFirstName} to {shopName}
+          </Button>
+          <Button asChild variant="ghost" size="lg">
+            <Link href="/shop">Not now</Link>
+          </Button>
+        </div>
+      </Card>
     </Page>
   );
 }

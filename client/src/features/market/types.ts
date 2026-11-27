@@ -127,6 +127,8 @@ export interface SuggestResponse {
     tensionMains: number | null;
     tensionCrosses: number | null;
   } | null;
+  /** Set when the player's usual stringer for this racket isn't on 10IS yet. */
+  invitable: { savedStringerId: number; name: string } | null;
 }
 
 export interface SponsoredPlacement {

@@ -29,6 +29,7 @@ import { UpgradeCard } from "@/components/UpgradeCard";
 import { StringerForm } from "@/features/StringerForm";
 import { useMe } from "@/hooks/use-me";
 import { useDebounce } from "@/hooks/use-debounce";
+import { InviteStringerButton } from "@/features/market/InviteStringer";
 import { useDeleteStringer, useMyStringers } from "@/hooks/use-bag";
 import { ApiError, get } from "@/lib/api";
 import { formatDate } from "@/lib/format";
@@ -445,6 +446,22 @@ function MyStringerCard({ stringer: s, onEdit, onDelete }: { stringer: MyStringe
       </p>
 
       {s.notes && <p className="mt-3 whitespace-pre-line rounded-xl bg-surface-2/70 px-3.5 py-2.5 text-sm leading-relaxed">{s.notes}</p>}
+
+      {s.shopSlug ? (
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-grass-soft px-4 py-3">
+          <p className="text-sm font-medium text-grass">Takes bookings on 10IS</p>
+          <Button asChild size="sm">
+            <Link href={`/shops/${s.shopSlug}?book=1`}>
+              <CalendarCheck /> Book
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-4 rounded-2xl border border-dashed border-line px-4 py-3">
+          <p className="text-sm text-muted">Book {s.stringerName.split(/\s+/)[0]} in two taps next time: invite them to take bookings on 10IS. It's free for them.</p>
+          <InviteStringerButton savedStringerId={s.id} name={s.stringerName} size="sm" variant="secondary" className="mt-3" />
+        </div>
+      )}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
         {s.phone && (
