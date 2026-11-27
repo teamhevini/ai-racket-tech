@@ -37,6 +37,18 @@ export default function Privacy() {
             save about your stringers.
           </li>
           <li>
+            <strong>Bookings with a stringer</strong> — when you book a restring through 10IS, the name, email or phone, racket and string
+            choice you enter, and the job's status as the shop updates it.
+          </li>
+          <li>
+            <strong>Business accounts</strong> — if you run a stringing shop, retailer or string brand on 10IS: your business name,
+            address, contact details, prices, services, catalogue and campaign settings.
+          </li>
+          <li>
+            <strong>Invites</strong> — if you invite one of your saved stringers to 10IS, we create an invite link tied to that saved
+            stringer. We never message them for you; you choose how to share the link.
+          </li>
+          <li>
             <strong>Payment data</strong> — billing is handled entirely by Stripe. We never see or store your card number. We store only a
             Stripe customer ID and subscription ID to manage your plan.
           </li>
@@ -58,16 +70,40 @@ export default function Privacy() {
           <li>To manage your account and plan (Free, Pro or Club).</li>
           <li>To improve the recommendation engine and overall service.</li>
           <li>To process payments securely through Stripe.</li>
+          <li>To pass your booking to the stringer you chose, so they can do the job and keep you updated.</li>
+          <li>To show sponsored string suggestions to free accounts (see section 3). Paid plans never see them.</li>
         </ul>
-        <p>We do not sell your data to third parties. We do not use your data for advertising.</p>
+        <p>We do not sell your data to third parties. We never use your personal data to target advertising.</p>
 
-        <h2>3. Data storage</h2>
+        <h2>3. What shops and brands can see</h2>
+        <ul>
+          <li>
+            <strong>Your stringer</strong> sees the booking details you enter. If you leave “share my racket history” on (it is on by
+            default and you can switch it off on every booking), they can also see your past setups for that racket so they string it
+            right. They cannot see anything else in your account.
+          </li>
+          <li>
+            <strong>String brands</strong> never see who you are. When a string is recommended, booked or rated, we record an anonymous
+            signal: a one-way scrambled code instead of your identity, plus the string, tension band, playstyle and rating. Brands only
+            ever see totals, and any group smaller than 5 players is hidden so nobody can be singled out.
+          </li>
+          <li>
+            <strong>Sponsored suggestions</strong> are always labelled, appear separately below your own recommendation, and only show a
+            string that genuinely fits your profile. A sponsor can never change, reorder or remove your recommendation.
+          </li>
+          <li>
+            <strong>Shop and buy links</strong> go through a short 10IS redirect so we can count the click and, where a retailer pays us a
+            commission, credit it. The retailer receives a click code, not your name or email.
+          </li>
+        </ul>
+
+        <h2>4. Data storage</h2>
         <p>
           Your data is stored in a PostgreSQL database hosted on Railway (US-based servers). Sessions are signed and stored server-side.
           Passwords are hashed using bcrypt and are never stored in plain text.
         </p>
 
-        <h2>4. Third-party services</h2>
+        <h2>5. Third-party services</h2>
         <ul>
           <li>
             <strong>Stripe</strong> — payment processing. Subject to <Ext href="https://stripe.com/privacy">Stripe's Privacy Policy</Ext>.
@@ -93,12 +129,12 @@ export default function Privacy() {
           </li>
         </ul>
 
-        <h2>5. Your rights</h2>
+        <h2>6. Your rights</h2>
         <p>You can:</p>
         <ul>
           <li>
-            <strong>Download your data</strong> — export everything (profile, rackets, racket history, stringers and recommendations) as a
-            file from your Account page at any time.
+            <strong>Download your data</strong> — export everything (profile, rackets, racket history, stringers, bookings and
+            recommendations) as a file from your Account page at any time.
           </li>
           <li>
             <strong>Delete your account</strong> — from your Account page. This permanently removes all your data, and you get a copy of
@@ -109,23 +145,28 @@ export default function Privacy() {
             racket, at any time.
           </li>
           <li>
+            <strong>Stop sharing history</strong> — switch off “share my racket history” on any booking.
+          </li>
+          <li>
             <strong>Ask us anything</strong> — email <Mail /> and we'll help.
           </li>
         </ul>
 
-        <h2>6. Cookies</h2>
+        <h2>7. Cookies and offline storage</h2>
         <p>
           We use a single session cookie to keep you logged in. It is HTTP-only, secure, and expires after 30 days. We also remember your
-          day/night theme choice in your browser. We do not use advertising or tracking cookies.
+          day/night theme choice in your browser. Google Analytics sets its own analytics cookies; Umami sets none. We do not use
+          advertising cookies. If you add 10IS to your home screen, your device keeps a copy of the app's pages and images so it opens
+          fast and works offline. Your account data is never stored in that copy.
         </p>
 
-        <h2>7. Children's privacy</h2>
+        <h2>8. Children's privacy</h2>
         <p>
           10IS is not directed at children under 13. We do not knowingly collect personal information from children. If you believe we
           have collected information from a child, please contact us immediately.
         </p>
 
-        <h2>8. Contact</h2>
+        <h2>9. Contact</h2>
         <p>
           Questions about this policy? Contact us at <Mail />.
         </p>
