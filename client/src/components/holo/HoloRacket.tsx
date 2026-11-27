@@ -757,7 +757,7 @@ export default function HoloRacket({ specs, className, compact }: { specs: HoloS
 
     // ── Interaction
     // ?racketView=front|left|right|back|top pins a tech-pack angle (used to check the model against the artwork).
-    const VIEWS: Record<string, [number, number]> = { front: [0, 0], left: [Math.PI / 2, 0], right: [-Math.PI / 2, 0], back: [Math.PI, 0], top: [0, Math.PI / 2] };
+    const VIEWS: Record<string, [number, number]> = { hero: [-0.38, 0.08], front: [0, 0], left: [Math.PI / 2, 0], right: [-Math.PI / 2, 0], back: [Math.PI, 0], top: [0, Math.PI / 2] };
     const pinned = VIEWS[new URLSearchParams(window.location.search).get("racketView") ?? ""];
     let yaw = pinned ? pinned[0] : -0.42, pitch = pinned ? pinned[1] : 0.1, vYaw = reduce || pinned ? 0 : 0.004, vPitch = 0;
     let dragging = false, moved = 0, lx = 0, ly = 0, idle = 0, time = 0;
