@@ -1,10 +1,13 @@
 import { Router, type Request } from "express";
 import Stripe from "stripe";
 import { z } from "zod";
-import { PLANS } from "@shared/tiers";
+import { LIFETIME, PLANS, planPrice } from "@shared/tiers";
 import type { UserTier } from "@shared/schema";
 import { asyncHandler, currentUser, loadUser, publicUser, requireAuth } from "../auth";
 import { storage } from "../storage";
+import { db } from "../db";
+import { brands, shops } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { parseBody } from "./util";
 
 export const billingRouter = Router();
@@ -29,17 +32,21 @@ const appUrl = (req: Request) => process.env.APP_URL ?? `${req.protocol}://${req
  * nobody could log into — the main reason paid members "lost" their history.)
  */
 billingRouter.post(
-  "/api/checkout/:plan(pro|club)",
+  "/api/checkout/:plan(pro|club|lifetime)",
   requireAuth,
   asyncHandler(async (req, res) => {
     const user = currentUser(req);
-    const plan = req.params.plan as "pro" | "club";
+    const which = req.params.plan as "pro" | "club" | "lifetime";
+    const plan: "pro" | "club" = which === "club" ? "club" : "pro";
+    const interval: "month" | "year" = req.query.interval === "month" ? "month" : "year";
     if (user.tier === plan || (plan === "pro" && user.tier === "club")) {
       return res.status(400).json({ message: `You already have ${PLANS[user.tier as "pro" | "club"].name}.` });
     }
-    const details = PLANS[plan];
+    const lifetime = which === "lifetime";
+    const price = lifetime ? { cents: LIFETIME.amountCents } : planPrice(plan, interval);
+    const name = lifetime ? LIFETIME.name : `${PLANS[plan].name} (${interval === "year" ? "annual" : "monthly"})`;
     const session = await getStripe().checkout.sessions.create({
-      mode: plan === "club" ? "subscription" : "payment",
+      mode: lifetime ? "payment" : "subscription",
       customer: user.stripeCustomerId ?? undefined,
       customer_email: user.stripeCustomerId ? undefined : user.email,
       client_reference_id: String(user.id),
@@ -47,17 +54,17 @@ billingRouter.post(
         {
           price_data: {
             currency: "usd",
-            product_data: { name: `10IS ${details.name}` },
-            unit_amount: details.amountCents,
-            ...(plan === "club" ? { recurring: { interval: "month" as const } } : {}),
+            product_data: { name: `10IS ${name}` },
+            unit_amount: price.cents,
+            ...(lifetime ? {} : { recurring: { interval } }),
           },
           quantity: 1,
         },
       ],
       success_url: `${appUrl(req)}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl(req)}/pricing`,
-      metadata: { userId: String(user.id), tier: plan },
-      ...(plan === "club" ? { subscription_data: { metadata: { userId: String(user.id) } } } : {}),
+      metadata: { userId: String(user.id), tier: plan, ...(lifetime ? { lifetime: "1" } : { interval }) },
+      ...(lifetime ? {} : { subscription_data: { metadata: { userId: String(user.id) } } }),
     });
     res.json({ url: session.url });
   }),
@@ -78,6 +85,20 @@ async function applyCheckoutSession(session: Stripe.Checkout.Session): Promise<U
       typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? user.stripeSubscriptionId,
   });
   return nextTier;
+}
+
+/** Shop Pro and brand plans (metadata.kind = "shop" | "brand"). */
+export async function applyBusinessCheckout(session: Stripe.Checkout.Session) {
+  if (session.payment_status === "unpaid") return;
+  const customer = typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
+  const subscription = typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null;
+  const ids = { ...(customer ? { stripeCustomerId: customer } : {}), ...(subscription ? { stripeSubscriptionId: subscription } : {}) };
+  if (session.metadata?.kind === "shop" && session.metadata.shopId) {
+    await db.update(shops).set({ plan: "pro", ...ids }).where(eq(shops.id, Number(session.metadata.shopId)));
+  } else if (session.metadata?.kind === "brand" && session.metadata.brandId) {
+    const plan = session.metadata.plan === "partner" ? "partner" : "insights";
+    await db.update(brands).set({ plan, ...ids }).where(eq(brands.id, Number(session.metadata.brandId)));
+  }
 }
 
 billingRouter.post(
@@ -115,15 +136,20 @@ billingRouter.post(
     }
 
     if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
-      await applyCheckoutSession(event.data.object as Stripe.Checkout.Session);
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (session.metadata?.kind === "shop" || session.metadata?.kind === "brand") await applyBusinessCheckout(session);
+      else await applyCheckoutSession(session);
     } else if (event.type === "customer.subscription.deleted" || event.type === "customer.subscription.updated") {
       const sub = event.data.object as Stripe.Subscription;
       const ended = event.type === "customer.subscription.deleted" || ["canceled", "unpaid", "incomplete_expired"].includes(sub.status);
-      if (ended) {
+      if (ended && (sub.metadata?.kind === "shop" || sub.metadata?.kind === "brand")) {
+        await db.update(shops).set({ plan: "free", stripeSubscriptionId: null }).where(eq(shops.stripeSubscriptionId, sub.id));
+        await db.update(brands).set({ plan: "free", stripeSubscriptionId: null }).where(eq(brands.stripeSubscriptionId, sub.id));
+      } else if (ended) {
         const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
         const byMeta = sub.metadata?.userId ? await storage.getUserById(Number(sub.metadata.userId)) : undefined;
         const user = byMeta ?? (await storage.getUserByStripeCustomerId(customerId));
-        if (user && user.tier === "club" && user.stripeSubscriptionId === sub.id) {
+        if (user && user.tier !== "free" && user.stripeSubscriptionId === sub.id) {
           await storage.updateUser(user.id, { tier: "free", stripeSubscriptionId: null });
         }
       }

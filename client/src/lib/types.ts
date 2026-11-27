@@ -20,6 +20,10 @@ export interface Me {
   tier: UserTier;
   isAdmin: boolean;
   entitlements: Entitlements;
+  /** Set when this account runs a stringing shop on 10IS. */
+  shop?: { id: number; slug: string; name: string; plan: "free" | "pro" } | null;
+  /** Set when this account manages a string company, racket brand or retailer. */
+  brand?: { id: number; slug: string; name: string; kind: "string" | "racket" | "retailer"; plan: "free" | "insights" | "partner" } | null;
 }
 
 export interface ReminderJson {
@@ -64,7 +68,7 @@ export interface RacketDetail {
   } | null;
 }
 
-export type MyStringer = SavedStringerJson & { jobCount: number; lastJobAt: string | null };
+export type MyStringer = SavedStringerJson & { jobCount: number; lastJobAt: string | null; shopSlug: string | null };
 
 export interface PlaceResult {
   name: string;
@@ -91,7 +95,19 @@ export interface RecommendationRunResponse {
   confidence: "high" | "medium" | "estimated";
   createdAt?: string;
   fallback?: boolean;
-  racket?: { id: number; brand: string; model: string; recTensionMin: number | null; recTensionMax: number | null } | null;
+  racket?: {
+    id: number;
+    brand: string;
+    model: string;
+    recTensionMin: number | null;
+    recTensionMax: number | null;
+    headSize?: number | null;
+    stringPattern?: string | null;
+    stiffnessRa?: number | null;
+    weightUnstrung?: number | null;
+    balance?: string | null;
+    beamWidth?: string | null;
+  } | null;
   racketLabel?: string | null;
   inputs?: Record<string, unknown>;
   isOwner?: boolean;

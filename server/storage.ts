@@ -27,7 +27,7 @@ import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 
 type SavedRacketData = Partial<Omit<SavedRacket, "id" | "userId" | "createdAt">> & { nickname?: string };
 type SavedStringerData = Partial<Omit<SavedStringer, "id" | "userId" | "createdAt">> & { stringerName?: string };
-type StringJobData = Omit<StringJob, "id" | "userId" | "savedRacketId" | "createdAt">;
+type StringJobData = Omit<StringJob, "id" | "userId" | "savedRacketId" | "createdAt" | "bookingId" | "stringId"> & Partial<Pick<StringJob, "bookingId" | "stringId">>;
 
 const featuredFirst = sql`(${rackets.brand} = 'Hevini') DESC, ${rackets.brand}, ${rackets.model}`;
 

@@ -12,7 +12,11 @@ import {
   requireAuth,
   signIn,
 } from "../auth";
+import { desc, eq } from "drizzle-orm";
+import { db } from "../db";
+import { bookings } from "@shared/schema";
 import { storage } from "../storage";
+import { brandForOwner, shopForOwner } from "../b2b";
 import { parseBody, parseId } from "./util";
 
 export const accountRouter = Router();
@@ -119,7 +123,15 @@ accountRouter.post("/api/auth/logout", (req, res) => {
 accountRouter.get(
   "/api/auth/me",
   asyncHandler(async (req, res) => {
-    res.json(publicUser(await loadUser(req)));
+    const user = await loadUser(req);
+    const base = publicUser(user);
+    if (!user) return res.json({ ...base, shop: null, brand: null });
+    const [shop, brand] = await Promise.all([shopForOwner(user.id), brandForOwner(user.id)]);
+    res.json({
+      ...base,
+      shop: shop ? { id: shop.id, slug: shop.slug, name: shop.name, plan: shop.plan } : null,
+      brand: brand ? { id: brand.id, slug: brand.slug, name: brand.name, kind: brand.kind, plan: brand.plan } : null,
+    });
   }),
 );
 
@@ -231,11 +243,12 @@ accountRouter.delete(
 // ─── Export & delete ────────────────────────────────────────────────────────
 
 async function exportFor(user: User) {
-  const [recommendations, savedRackets, savedStringers, stringJobs] = await Promise.all([
+  const [recommendations, savedRackets, savedStringers, stringJobs, myBookings] = await Promise.all([
     storage.getRecommendationsByUserId(user.id, 10_000),
     storage.getSavedRackets(user.id),
     storage.getSavedStringers(user.id),
     storage.getStringJobsForUser(user.id),
+    db.select().from(bookings).where(eq(bookings.playerUserId, user.id)).orderBy(desc(bookings.createdAt)),
   ]);
   return {
     exportedAt: new Date().toISOString(),
@@ -243,6 +256,7 @@ async function exportFor(user: User) {
     savedRackets,
     stringJobs,
     savedStringers,
+    bookings: myBookings,
     recommendations,
   };
 }

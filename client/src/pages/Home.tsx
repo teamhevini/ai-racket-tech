@@ -1,3 +1,4 @@
+import { InstallApp } from "@/components/InstallApp";
 import * as React from "react";
 import { lazy, Suspense } from "react";
 import { Link } from "wouter";
@@ -54,6 +55,8 @@ function Dashboard() {
           {me.firstName ? `${me.firstName}'s` : "Your"} <em className="text-brand">bag</em>
         </h1>
       </header>
+
+      <InstallApp dismissible className="mb-6" />
 
       {bag.isLoading ? (
         <div className="space-y-3">
@@ -146,6 +149,12 @@ function Dashboard() {
           </Card>
         </Link>
       </section>
+
+      <p className="mt-10 text-center text-sm text-muted">
+        <Link href="/business" className="inline-flex items-center gap-1 hover:text-ink">
+          Run a shop or a brand? <span className="font-medium text-ink">10IS for Business</span> <ArrowRight className="size-3.5" />
+        </Link>
+      </p>
 
       <RacketForm open={adding} onOpenChange={setAdding} />
       {logFor && <JobForm open={!!logFor} onOpenChange={(v) => !v && setLogFor(null)} racket={logFor} />}

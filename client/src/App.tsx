@@ -24,6 +24,18 @@ const Admin = lazy(() => import("@/pages/Admin"));
 const About = lazy(() => import("@/pages/About"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const Terms = lazy(() => import("@/pages/Terms"));
+// 10IS for Business
+const Business = lazy(() => import("@/pages/business/Business"));
+const HowWeRank = lazy(() => import("@/pages/business/HowWeRank"));
+const Shops = lazy(() => import("@/pages/market/Shops"));
+const ShopProfile = lazy(() => import("@/pages/market/ShopProfile"));
+const Bookings = lazy(() => import("@/pages/market/Bookings"));
+const StringDetail = lazy(() => import("@/pages/market/StringDetail"));
+const BrandProfile = lazy(() => import("@/pages/market/BrandProfile"));
+const ShopConsole = lazy(() => import("@/pages/shop/ShopConsole"));
+const ShopNew = lazy(() => import("@/pages/shop/ShopNew"));
+const BrandPortal = lazy(() => import("@/pages/brand/BrandPortal"));
+const BrandNew = lazy(() => import("@/pages/brand/BrandNew"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 // The chat (and its Markdown renderer) loads after the page, never blocking first paint.
 const ChatBot = lazy(() => import("@/components/ChatBot").then((m) => ({ default: m.ChatBot })));
@@ -61,6 +73,17 @@ function Router() {
           <Route path="/about" component={About} />
           <Route path="/privacy" component={Privacy} />
           <Route path="/terms" component={Terms} />
+          <Route path="/business" component={Business} />
+          <Route path="/how-we-rank" component={HowWeRank} />
+          <Route path="/shops" component={Shops} />
+          <Route path="/shops/:slug" component={ShopProfile} />
+          <Route path="/bookings" component={Bookings} />
+          <Route path="/strings/:id" component={StringDetail} />
+          <Route path="/brands/:slug" component={BrandProfile} />
+          <Route path="/shop/new" component={ShopNew} />
+          <Route path="/shop/:tab?" component={ShopConsole} />
+          <Route path="/brand/new" component={BrandNew} />
+          <Route path="/brand" component={BrandPortal} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>

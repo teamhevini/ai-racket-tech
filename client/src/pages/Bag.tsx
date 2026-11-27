@@ -7,6 +7,8 @@ import { EmptyState, PageHeader, Skeleton } from "@/components/ui/surface";
 import { UpgradeCard } from "@/components/UpgradeCard";
 import { RacketCard } from "@/features/RacketCard";
 import { RacketForm } from "@/features/RacketForm";
+import { BookRestringButton } from "@/features/market/BookRestring";
+import { statusText } from "@/components/FreshnessRing";
 import { useBag } from "@/hooks/use-bag";
 import { useMe } from "@/hooks/use-me";
 
@@ -24,6 +26,7 @@ export default function Bag() {
   );
   const limit = bag.data?.limit ?? null;
   const full = limit !== null && rackets.length >= limit;
+  const due = rackets.filter((r) => r.reminder.status === "overdue" || r.reminder.status === "due-soon");
 
   return (
     <Page>
@@ -60,6 +63,20 @@ export default function Bag() {
           }
         />
       ) : (
+        <>
+        {due.length > 0 && (
+          <section aria-label="Due for a restring" className="mb-4 space-y-2">
+            {due.map((r) => (
+              <div key={r.id} className="flex items-center justify-between gap-3 rounded-2xl bg-ink px-4 py-3 text-bg sm:px-5">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{r.nickname}</p>
+                  <p className="truncate text-xs text-bg/65">{statusText(r.reminder)}</p>
+                </div>
+                <BookRestringButton variant="ball" size="sm" className="shrink-0" prefill={{ savedRacketId: r.id, source: "reminder" }} />
+              </div>
+            ))}
+          </section>
+        )}
         <div className="grid gap-3 md:grid-cols-2">
           {rackets.map((r, i) => (
             <div key={r.id} className="animate-fade-up" style={{ animationDelay: `${i * 50}ms` }}>
@@ -67,6 +84,7 @@ export default function Bag() {
             </div>
           ))}
         </div>
+        </>
       )}
 
       {full && (

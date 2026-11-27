@@ -153,7 +153,7 @@ export default function Rackets() {
             </Select>
           </div>
         </div>
-        <div className="scrollbar-none -mx-4 flex gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6" role="group" aria-label="Filter by brand">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by brand">
           <Chip selected={!brand} onClick={() => setBrand(null)} className="shrink-0 py-2">
             All
           </Chip>

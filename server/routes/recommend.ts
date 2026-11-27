@@ -5,6 +5,7 @@ import { asyncHandler, loadUser, rateLimit } from "../auth";
 import { storage } from "../storage";
 import { confidenceFor, generateRecommendation } from "../recommend-engine";
 import { parseBody, parseId } from "./util";
+import { recordRecommendationSignals } from "../b2b";
 
 export const recommendRouter = Router();
 
@@ -66,6 +67,8 @@ recommendRouter.post(
       // Remember anonymous runs so they can be claimed into history after sign-up.
       req.session.anonRuns = [...(req.session.anonRuns ?? []), run.id].slice(-10);
     }
+    // Analytics only, after the pick is stored; it reads the output and never changes it.
+    await recordRecommendationSignals(output, input, user?.id ?? req.sessionID ?? null, racket?.brand ?? null);
     res.status(201).json({ runId: run.id, recommendation: output, confidence, fallback });
   }),
 );
@@ -83,7 +86,21 @@ recommendRouter.get(
       recommendation: run.outputJson,
       confidence: run.confidence,
       createdAt: run.createdAt,
-      racket: racket ? { id: racket.id, brand: racket.brand, model: racket.model, recTensionMin: racket.recTensionMin, recTensionMax: racket.recTensionMax } : null,
+      racket: racket
+        ? {
+            id: racket.id,
+            brand: racket.brand,
+            model: racket.model,
+            recTensionMin: racket.recTensionMin,
+            recTensionMax: racket.recTensionMax,
+            headSize: racket.headSize,
+            stringPattern: racket.stringPattern,
+            stiffnessRa: racket.stiffnessRa,
+            weightUnstrung: racket.weightUnstrung,
+            balance: racket.balance,
+            beamWidth: racket.beamWidth,
+          }
+        : null,
       racketLabel: run.racketLabel ?? (racket ? `${racket.brand} ${racket.model}` : null),
       inputs: run.inputsJson,
       isOwner: !!user && run.userId === user.id,

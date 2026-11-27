@@ -2,13 +2,16 @@ import * as React from "react";
 import { Link, useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, Briefcase, Info, MapPin, RotateCcw, Share2, Star } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Briefcase, CalendarCheck, Info, MapPin, RotateCcw, Share2, Star } from "lucide-react";
 import { Page } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge, Card, EmptyState, Skeleton } from "@/components/ui/surface";
 import { Sheet } from "@/components/ui/sheet";
 import { UpgradeCard } from "@/components/UpgradeCard";
 import { JobForm, type JobPrefill } from "@/features/JobForm";
+import { BookRestringButton } from "@/features/market/BookRestring";
+import { WhereToBuy } from "@/features/market/Offers";
+import { SponsoredSlot } from "@/features/market/SponsoredSlot";
 import { useMe } from "@/hooks/use-me";
 import { useBag } from "@/hooks/use-bag";
 import { formatDate } from "@/lib/format";
@@ -17,6 +20,8 @@ import type { RecommendationOutput } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
 type Setup = RecommendationOutput["setup"]["mains"];
+
+const HoloRacket = React.lazy(() => import("@/components/holo/HoloRacket"));
 
 const CONFIDENCE: Record<string, { label: string; tone: "grass" | "clay" | "neutral"; body: string }> = {
   high: { label: "High confidence", tone: "grass", body: "Built from your exact frame specs and full player profile." },
@@ -140,6 +145,24 @@ export default function RecommendationPage() {
         </div>
       )}
 
+      {/* Your frame, in 3D, with the setup pinned to it */}
+      <React.Suspense fallback={<div className="mb-4 h-[22rem]" />}>
+        <HoloRacket
+          compact
+          className="mb-4 h-[22rem] sm:h-[26rem]"
+          specs={{
+            headSize: data.racket?.headSize ?? null,
+            pattern: data.racket?.stringPattern ?? null,
+            stiffness: data.racket?.stiffnessRa ?? null,
+            weight: data.racket?.weightUnstrung ?? null,
+            balance: data.racket?.balance ?? null,
+            beam: data.racket?.beamWidth ?? null,
+            tension: { mains: numericTension(mains.tension), crosses: crosses ? numericTension(crosses.tension) : null },
+            stringName: mains.exampleStrings[0] ?? mains.stringFamily,
+          }}
+        />
+      </React.Suspense>
+
       {/* Primary setup */}
       <Card className="relative mb-4 overflow-hidden rounded-3xl p-0">
         <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-ball/20 blur-3xl" />
@@ -173,6 +196,29 @@ export default function RecommendationPage() {
           </Link>
         </Button>
       </div>
+
+      {/* Get it strung */}
+      <Card className="-mt-6 mb-10 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="font-semibold">Get it strung</p>
+          <p className="text-sm text-muted">Book a 10IS stringer with this setup already filled in.</p>
+        </div>
+        <BookRestringButton
+          variant="ink"
+          className="shrink-0"
+          prefill={{
+            savedRacketId: data.isOwner ? data.savedRacketId : null,
+            mains: prefill?.mains,
+            crosses: prefill?.crosses,
+            gauge: prefill?.gauge,
+            tensionMains: prefill?.tensionMains ? Number(prefill.tensionMains) : null,
+            tensionCrosses: prefill?.tensionCrosses ? Number(prefill.tensionCrosses) : null,
+            recommendationRunId: data.isOwner ? data.runId : null,
+          }}
+        >
+          <CalendarCheck /> Book this setup
+        </BookRestringButton>
+      </Card>
 
       <section className="mb-8">
         <p className="eyebrow mb-3">Technician's note</p>
@@ -212,6 +258,11 @@ export default function RecommendationPage() {
           </div>
         </section>
       )}
+
+      <WhereToBuy runId={data.runId} />
+
+      {/* The one paid placement: after the pick and alternatives, never above or inside them. */}
+      <SponsoredSlot runId={data.runId} />
 
       <div className="flex justify-center">
         <Button asChild variant="ghost">

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge, Card, PageHeader } from "@/components/ui/surface";
 import { api } from "@/lib/api";
 import { useMe } from "@/hooks/use-me";
-import { PLANS, FREE_RACKET_LIMIT, FREE_HISTORY_LIMIT, FREE_STRINGER_RESULTS } from "@shared/tiers";
+import { PLANS, LIFETIME, planPrice, FREE_RACKET_LIMIT, FREE_HISTORY_LIMIT, FREE_STRINGER_RESULTS, type BillingInterval } from "@shared/tiers";
+import { Segmented } from "@/components/ui/surface";
 import { cn } from "@/lib/utils";
 
 type PlanId = "free" | "pro" | "club";
@@ -23,14 +24,15 @@ const FREE_FEATURES = [
 export default function Pricing() {
   const { me, signedIn } = useMe();
   const [, navigate] = useLocation();
-  const [loading, setLoading] = React.useState<PlanId | null>(null);
+  const [loading, setLoading] = React.useState<PlanId | "lifetime" | null>(null);
+  const [interval, setInterval] = React.useState<BillingInterval>("year");
   const tier = signedIn ? me.tier : null;
 
-  async function checkout(plan: "pro" | "club") {
+  async function checkout(plan: "pro" | "club" | "lifetime") {
     if (!signedIn) return navigate(`/signup?next=${encodeURIComponent("/pricing")}`);
     setLoading(plan);
     try {
-      const { url } = await api<{ url: string }>("POST", `/api/checkout/${plan}`);
+      const { url } = await api<{ url: string }>("POST", `/api/checkout/${plan}${plan === "lifetime" ? "" : `?interval=${interval}`}`);
       window.location.href = url;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't start checkout.");
@@ -40,8 +42,8 @@ export default function Pricing() {
 
   const plans: Array<{ id: PlanId; name: string; price: string; cadence: string; features: readonly string[]; pitch: string }> = [
     { id: "free", name: "Free", price: "$0", cadence: "forever", features: FREE_FEATURES, pitch: "Everything you need to keep one or two frames fresh." },
-    { id: "pro", ...PLANS.pro, pitch: "Pay once. Your whole bag and its full history, for good." },
-    { id: "club", ...PLANS.club, pitch: "Pro plus a technician in your pocket." },
+    { id: "pro", ...PLANS.pro, price: planPrice("pro", interval).label, cadence: planPrice("pro", interval).cadence, pitch: interval === "year" ? "About $4 a month. Your whole bag, its full history, no ads." : "Your whole bag, its full history, no ads." },
+    { id: "club", ...PLANS.club, price: planPrice("club", interval).label, cadence: planPrice("club", interval).cadence, pitch: "Pro plus a technician in your pocket." },
   ];
 
   const isCurrent = (id: PlanId) => tier === id;
@@ -54,6 +56,18 @@ export default function Pricing() {
         title={<>Simple plans, <em className="italic text-brand">no tiebreaks.</em></>}
         description="Start free. Upgrade when your bag grows — every plan keeps your reminders running."
       />
+      <div className="mb-8 flex flex-wrap items-center gap-3">
+        <Segmented
+          label="Billing"
+          value={interval}
+          onChange={setInterval}
+          options={[
+            { value: "year", label: "Yearly" },
+            { value: "month", label: "Monthly" },
+          ]}
+        />
+        <span className="rounded-full bg-grass-soft px-3 py-1 text-xs font-semibold text-grass">Yearly saves up to 42%</span>
+      </div>
       <div className="grid items-stretch gap-4 md:grid-cols-3">
         {plans.map((p) => {
           const featured = p.id === "pro";
@@ -117,8 +131,19 @@ export default function Pricing() {
           );
         })}
       </div>
+      {tier !== "pro" && tier !== "club" && (
+        <Card className="mt-6 flex flex-col items-start justify-between gap-4 p-6 sm:flex-row sm:items-center">
+          <div>
+            <p className="font-semibold">{LIFETIME.name} · {LIFETIME.price} once</p>
+            <p className="mt-1 text-sm text-muted">Founder pricing: everything in Pro, for good. Available while we're early.</p>
+          </div>
+          <Button variant="outline" loading={loading === "lifetime"} onClick={() => checkout("lifetime")}>
+            Get lifetime
+          </Button>
+        </Card>
+      )}
       <p className="mt-10 text-center text-sm text-muted">
-        Secure checkout by Stripe. Club can be cancelled any time from your account — you keep access until the period ends.
+        Secure checkout by Stripe. Cancel any time from your account; you keep access until the period ends. Bought Pro before? It's yours for good.
       </p>
     </Page>
   );

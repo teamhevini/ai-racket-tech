@@ -1,0 +1,1 @@
+ALTER TABLE "string_signals" ADD COLUMN "sampled" boolean DEFAULT false NOT NULL;

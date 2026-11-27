@@ -1,12 +1,25 @@
 {
+  "id": "/",
   "name": "10IS — Your racket, dialled in",
   "short_name": "10IS",
-  "start_url": "/",
+  "description": "Your rackets, your strings and your stringer in one place: AI string setups, restring reminders and online booking.",
+  "start_url": "/?source=homescreen",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#F6F4EE",
-  "theme_color": "#C8102E",
+  "theme_color": "#F6F4EE",
+  "categories": ["sports", "lifestyle", "health"],
   "icons": [
-    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
-    { "src": "/Hevini_02_Inverted.png", "sizes": "1080x1080", "type": "image/png", "purpose": "any" }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "My bag", "short_name": "Bag", "url": "/bag?source=shortcut", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Book a restring", "short_name": "Book", "url": "/shops?source=shortcut", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Get a string setup", "short_name": "Setup", "url": "/setup?source=shortcut", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Stringer queue", "short_name": "Queue", "url": "/shop?source=shortcut", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

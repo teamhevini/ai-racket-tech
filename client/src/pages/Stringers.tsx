@@ -3,8 +3,10 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  ArrowRight,
   Bookmark,
   BookmarkCheck,
+  CalendarCheck,
   Globe,
   LocateFixed,
   Mail,
@@ -27,6 +29,7 @@ import { UpgradeCard } from "@/components/UpgradeCard";
 import { StringerForm } from "@/features/StringerForm";
 import { useMe } from "@/hooks/use-me";
 import { useDebounce } from "@/hooks/use-debounce";
+import { InviteStringerButton } from "@/features/market/InviteStringer";
 import { useDeleteStringer, useMyStringers } from "@/hooks/use-bag";
 import { ApiError, get } from "@/lib/api";
 import { formatDate } from "@/lib/format";
@@ -71,6 +74,19 @@ export default function Stringers() {
         }
         description="Find a stringer near you, and keep the ones you trust a tap away — with their number, hours and notes."
       />
+
+      <Link href="/shops" className="group mb-6 block">
+        <div className="flex items-center gap-4 rounded-2xl bg-ink px-5 py-4 text-bg transition-transform duration-300 ease-spring group-active:scale-[0.99]">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ball text-ball-ink">
+            <CalendarCheck className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">Book a 10IS stringer online</p>
+            <p className="text-sm text-bg/65">Pick a day, track it live, pick it up.</p>
+          </div>
+          <ArrowRight className="size-5 shrink-0 transition-transform group-hover:translate-x-0.5" />
+        </div>
+      </Link>
 
       <Segmented
         label="Stringers view"
@@ -430,6 +446,22 @@ function MyStringerCard({ stringer: s, onEdit, onDelete }: { stringer: MyStringe
       </p>
 
       {s.notes && <p className="mt-3 whitespace-pre-line rounded-xl bg-surface-2/70 px-3.5 py-2.5 text-sm leading-relaxed">{s.notes}</p>}
+
+      {s.shopSlug ? (
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-grass-soft px-4 py-3">
+          <p className="text-sm font-medium text-grass">Takes bookings on 10IS</p>
+          <Button asChild size="sm">
+            <Link href={`/shops/${s.shopSlug}?book=1`}>
+              <CalendarCheck /> Book
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-4 rounded-2xl border border-dashed border-line px-4 py-3">
+          <p className="text-sm text-muted">Book {s.stringerName.split(/\s+/)[0]} in two taps next time: invite them to take bookings on 10IS. It's free for them.</p>
+          <InviteStringerButton savedStringerId={s.id} name={s.stringerName} size="sm" variant="secondary" className="mt-3" />
+        </div>
+      )}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
         {s.phone && (

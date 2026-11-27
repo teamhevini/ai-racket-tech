@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Link, useLocation } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
-import { Briefcase, Home, MapPin, Moon, Sparkles, Sun, UserRound, Library, LogIn } from "lucide-react";
+import { Briefcase, Home, MapPin, Moon, Sparkles, Sun, UserRound, Library, LogIn, ClipboardList, BarChart3 } from "lucide-react";
 import { Logo } from "./Logo";
 import { Button } from "./ui/button";
 import { useMe } from "@/hooks/use-me";
@@ -12,19 +12,38 @@ import { SUPPORT_EMAIL } from "@shared/contact";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; match?: (p: string) => boolean };
 
-function useNav(signedIn: boolean): NavItem[] {
+function useNav(signedIn: boolean, me: ReturnType<typeof useMe>["me"]): NavItem[] {
+  // Stringers get their queue where "Home" was; brands get their portal. Both keep their player tabs.
+  if (signedIn && me.shop) {
+    return [
+      { href: "/shop", label: "Queue", icon: ClipboardList, match: (p) => p.startsWith("/shop") && !p.startsWith("/shops") },
+      { href: "/bag", label: "My bag", icon: Briefcase, match: (p) => p.startsWith("/bag") },
+      { href: "/setup", label: "Setup", icon: Sparkles, match: (p) => p.startsWith("/setup") || p.startsWith("/recommendation") },
+      { href: "/shops", label: "Stringers", icon: MapPin, match: (p) => p.startsWith("/stringers") || p.startsWith("/shops") || p.startsWith("/bookings") },
+      { href: "/account", label: "Account", icon: UserRound, match: (p) => p.startsWith("/account") || p.startsWith("/pricing") },
+    ];
+  }
+  if (signedIn && me.brand) {
+    return [
+      { href: "/brand", label: "Brand", icon: BarChart3, match: (p) => p.startsWith("/brand") && !p.startsWith("/brands") },
+      { href: "/bag", label: "My bag", icon: Briefcase, match: (p) => p.startsWith("/bag") },
+      { href: "/setup", label: "Setup", icon: Sparkles, match: (p) => p.startsWith("/setup") || p.startsWith("/recommendation") },
+      { href: "/shops", label: "Stringers", icon: MapPin, match: (p) => p.startsWith("/stringers") || p.startsWith("/shops") || p.startsWith("/bookings") },
+      { href: "/account", label: "Account", icon: UserRound, match: (p) => p.startsWith("/account") || p.startsWith("/pricing") },
+    ];
+  }
   return signedIn
     ? [
         { href: "/", label: "Home", icon: Home, match: (p) => p === "/" },
         { href: "/bag", label: "My bag", icon: Briefcase, match: (p) => p.startsWith("/bag") },
         { href: "/setup", label: "Setup", icon: Sparkles, match: (p) => p.startsWith("/setup") || p.startsWith("/onboarding") || p.startsWith("/recommendation") },
-        { href: "/stringers", label: "Stringers", icon: MapPin, match: (p) => p.startsWith("/stringers") },
+        { href: "/shops", label: "Stringers", icon: MapPin, match: (p) => p.startsWith("/stringers") || p.startsWith("/shops") || p.startsWith("/bookings") },
         { href: "/account", label: "Account", icon: UserRound, match: (p) => p.startsWith("/account") || p.startsWith("/pricing") },
       ]
     : [
         { href: "/", label: "Home", icon: Home, match: (p) => p === "/" },
         { href: "/setup", label: "Setup", icon: Sparkles, match: (p) => p.startsWith("/setup") || p.startsWith("/onboarding") || p.startsWith("/recommendation") },
-        { href: "/stringers", label: "Stringers", icon: MapPin, match: (p) => p.startsWith("/stringers") },
+        { href: "/shops", label: "Stringers", icon: MapPin, match: (p) => p.startsWith("/stringers") || p.startsWith("/shops") },
         { href: "/rackets", label: "Rackets", icon: Library, match: (p) => p.startsWith("/rackets") },
         { href: "/login", label: "Log in", icon: LogIn, match: (p) => p === "/login" || p === "/signup" },
       ];
@@ -54,7 +73,7 @@ function DueDot() {
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { signedIn, me, loading } = useMe();
-  const nav = useNav(signedIn);
+  const nav = useNav(signedIn, me);
 
   React.useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -64,8 +83,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
     ? [...nav.filter((n) => n.href !== "/account"), { href: "/rackets", label: "Rackets", icon: Library, match: (p: string) => p.startsWith("/rackets") }]
     : [
         { href: "/setup", label: "Get a setup", icon: Sparkles, match: (p: string) => p.startsWith("/setup") },
-        { href: "/stringers", label: "Stringers", icon: MapPin, match: (p: string) => p.startsWith("/stringers") },
+        { href: "/shops", label: "Stringers", icon: MapPin, match: (p: string) => p.startsWith("/stringers") || p.startsWith("/shops") },
         { href: "/rackets", label: "Rackets", icon: Library, match: (p: string) => p.startsWith("/rackets") },
+        { href: "/business", label: "For business", icon: Library, match: (p: string) => p.startsWith("/business") },
         { href: "/pricing", label: "Pricing", icon: Library, match: (p: string) => p.startsWith("/pricing") },
       ];
 
@@ -200,6 +220,8 @@ function Footer() {
         <nav className="flex flex-wrap gap-6" aria-label="Footer">
           <Link href="/about" className="hover:text-ink">About</Link>
           <Link href="/pricing" className="hover:text-ink">Pricing</Link>
+          <Link href="/business" className="hover:text-ink">For business</Link>
+          <Link href="/how-we-rank" className="hover:text-ink">How we rank</Link>
           <Link href="/privacy" className="hover:text-ink">Privacy</Link>
           <Link href="/terms" className="hover:text-ink">Terms</Link>
           <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-ink">Contact</a>
