@@ -5,7 +5,7 @@ import { Page } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge, Card } from "@/components/ui/surface";
 import { useMe } from "@/hooks/use-me";
-import { BRAND_PLANS, K_ANONYMITY, SAMPLE_PLATFORM_FEE_PCT, SHOP_PLANS, SPONSORED_MIN_CPC_CENTS } from "@shared/tiers";
+import { BRAND_PLANS, K_ANONYMITY, SAMPLE_PLATFORM_FEE_PCT, SHOP_CLUB, SHOP_PLANS, SPONSORED_MIN_CPC_CENTS } from "@shared/tiers";
 import { cn } from "@/lib/utils";
 
 const minCpc = `$${(SPONSORED_MIN_CPC_CENTS / 100).toFixed(2)}`;
@@ -177,10 +177,11 @@ export default function Business() {
           <h3 className="mb-4 mt-10 flex items-center gap-2 text-sm font-semibold text-muted">
             <Wrench className="size-4" /> For stringers
           </h3>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-3">
             {Object.entries(SHOP_PLANS).map(([id, p]) => (
               <PlanCard key={id} plan={p} featured={id === "pro"} cta={shopCta} href={shopHref} />
             ))}
+            <PlanCard plan={SHOP_CLUB} cta="Talk to us" href="mailto:partners@10is.app" />
           </div>
 
           <h3 className="mb-4 mt-12 flex items-center gap-2 text-sm font-semibold text-muted">
@@ -268,7 +269,7 @@ function PlanCard({
         ))}
       </ul>
       <Button asChild variant={featured ? "ball" : "outline"} className="mt-6 w-full">
-        <Link href={href}>{cta}</Link>
+        {href.startsWith("mailto:") ? <a href={href}>{cta}</a> : <Link href={href}>{cta}</Link>}
       </Button>
     </Card>
   );

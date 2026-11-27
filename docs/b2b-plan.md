@@ -34,11 +34,12 @@ We win **stringers first, for free**, because their bookings and job records cre
 
 ## 2. What each side gets and why they'd pay
 
-### Players (free, or Pro $4.99 / Club $1.99/mo, unchanged)
+### Players: Free, Pro ($6.99/mo or $49/yr), Club ($12.99/mo or $99/yr), Pro Lifetime ($149 founder offer)
 - **Get:** an honest AI string pick, book their stringer in two taps when the reminder fires, a live status ("on the machine", "ready for pickup"), every job written into their racket history automatically, and free sample restrings from brands.
 - **Why it works:** it removes texting and guessing, and the reminder turns into an action. **Paid players never see sponsored placements**, which also makes the paid plans better.
+- **Why these prices:** the original $4.99 one-time Pro and $1.99/mo Club priced 10IS like a utility and produced almost no recurring revenue. Benchmarks: Strava $11.99/mo or $79.99/yr, SwingVision about $14.99/mo or $149.99/yr (video AI), Arccos $199.99/yr. 10IS sits below video-AI tools and alongside training apps, with annual as the default (about 40% cheaper than monthly) because annual plans retain far better. Lifetime at about 3x annual is a time-limited founder offer, not a permanent tier. Early one-time buyers keep Pro for good.
 
-### Stringers: Shop (free) and Shop Pro ($19/mo)
+### Stringers: Shop (free), Shop Pro ($29/mo) and Shop Club ($99/mo)
 - **Free:** public shop page with online booking, a one-handed job queue, status updates players see, walk-ins, your own history per customer racket. Up to 20 app bookings a month, unlimited walk-ins.
 - **Pro:**
   - unlimited bookings;
@@ -49,7 +50,7 @@ We win **stringers first, for free**, because their bookings and job records cre
 - **Why they'd pay:** one extra booking a month pays for Pro ($20–$40 labour per job). Two sample installs a month pay for it outright (about $14.40 each to the stringer). Pro is priced at about a fifth of Workshop by Bikebook and RacquetPass. Stringers decide on time saved and customers gained, not features.
 - **What we never sell to shops:** ranking. The shop directory isn't sorted by plan. Pro gets a "Verified shop" badge, not position.
 
-### String companies: Listing (free), Insights ($490/mo), Partner ($1,490/mo), sponsored placements (pay per click)
+### String companies: Listing (free), Insights ($690/mo), Partner ($1,990/mo), sponsored placements (pay per click)
 - **Listing (free):** verified brand page, manage the catalogue (names, gauges, prices, descriptions), run sponsored campaigns, campaign reporting. Lab scores and stiffness are set by 10IS, not the brand, because they drive the fit check.
 - **Insights:**
   - **demand:** how often the AI recommends your strings compared with the category, week by week, by level and playstyle;
@@ -59,7 +60,7 @@ We win **stringers first, for free**, because their bookings and job records cre
   - regions and the frames you're paired with.
   - Pseudonymised (players are a keyed hash) and aggregated; no figure, including a single week on a chart, is shown below 5 players.
 - **Partner:** everything in Insights plus **sample programmes run through partner stringers** (the brand pays an install fee per trial set; we track sample → rating → rebuy), and a quarterly category report.
-- **Sponsored placement:** one clearly labelled slot, shown only to players the string genuinely fits, after the AI's pick. Pay per click from $0.80, with a monthly cap.
+- **Sponsored placement:** one clearly labelled slot, shown only to players the string genuinely fits, after the AI's pick. Pay per click from $1.00, with a monthly cap.
 - **Why they'd pay:** brands currently spend on reps, demo reels and trade promotions with no way to measure whether a stringer or player switched. We sell the one thing they can't buy anywhere else: **measured trial and switching**, at the moment of decision, with a neutral recommendation in front of it.
 
 ### Retailers: free listing plus affiliate commission
@@ -76,17 +77,17 @@ We win **stringers first, for free**, because their bookings and job records cre
 
 | Line | Who pays | Price | How it's billed | Integrity guardrail |
 |---|---|---|---|---|
-| Shop Pro | Stringer | $19/mo | Stripe subscription | Doesn't buy ranking |
-| Club / multi-stringer (next) | Clubs, chains | $79/mo, up to 5 stringers | Stripe | Same |
-| Sponsored placement | String company | CPC from $0.80 (typical $1.20–$2.00), monthly cap | Each billable click is recorded in `campaign_events`. **Invoicing is not built yet**: monthly invoices from these records come next | Fit check first; max one; labelled; never replaces or reorders; paid players exempt |
-| Insights | String company, racket brand | $490/mo | Stripe subscription | k-anonymity 5; hashed players; no personal data |
-| Partner (samples) | String company | $1,490/mo + install fee per sample ($15–$25) + the string | Subscription via Stripe; install fees invoiced manually at first. **Stringer payouts are not built yet** (Stripe Connect) | Samples labelled to players and stringers; sampled installs and ratings tagged and kept out of organic insights |
+| Shop Pro | Stringer | $29/mo | Stripe subscription | Doesn't buy ranking |
+| Shop Club | Clubs, chains | $99/mo, up to 5 stringers (sold directly for now) | Invoice | Same |
+| Sponsored placement | String company | CPC from $1.00 (typical $1.20–$2.00), monthly cap | Each billable click is recorded in `campaign_events`. **Invoicing is not built yet**: monthly invoices from these records come next | Fit check first; max one; labelled; never replaces or reorders; paid players exempt |
+| Insights | String company, racket brand | $690/mo | Stripe subscription | k-anonymity 5; hashed players; no personal data |
+| Partner (samples) | String company | $1,990/mo + install fee per sample ($15–$25) + the string | Subscription via Stripe; install fees invoiced manually at first. **Stringer payouts are not built yet** (Stripe Connect) | Samples labelled to players and stringers; sampled installs and ratings tagged and kept out of organic insights |
 | Sample install margin | String company | 20% of the install fee | Netted from payouts | Same |
 | Affiliate | Retailer | 3–8% of order | Postback, 30-day window | Sorted by price; commission never shown or used to rank |
-| Player plans (existing) | Player | Pro $4.99 one-time, Club $1.99/mo | Stripe | Paid players are ad-free |
+| Player plans | Player | Pro $6.99/mo or $49/yr; Club $12.99/mo or $99/yr; Lifetime $149 founder offer | Stripe subscriptions | Paid players are ad-free |
 
 **Pricing logic:**
-- Shop Pro sits below the "one extra job a month" line.
+- Shop Pro at $29 is still about one extra restring a month, and well under RacquetPass ($99–$149) and bike-shop booking software ($89); Shop Club matches the club benchmark.
 - Insights is priced like a junior analyst's tooling budget, well under a single trade show.
 - Partner is priced so one 200-unit sample programme costs a brand about $5,000 all-in for 200 measured trials. That is cheaper per trial than demo reels sent to shops that may never install them.
 - Sponsored CPC is set high enough that brands only bid on players they fit. The minimum keeps spam out.
@@ -109,7 +110,7 @@ We win **stringers first, for free**, because their bookings and job records cre
 
 ## 5. Simple unit economics
 
-*Prices come from section 3. Conversion inputs are working assumptions, not measured or researched figures, so treat them as levers to test: a sponsored slot shown on 35% of free-plan setups, an 8% click-through rate, 15% of retailer click-outs buying, a $20–$22 basket, a 5% average commission. If any is off by half, sponsored and affiliate revenue move by half; the subscription lines don't depend on them.*
+*Prices come from section 3. Conversion inputs are working assumptions, not measured or researched figures, so treat them as levers to test: a sponsored slot shown on 35% of free-plan setups, an 8% click-through rate, 15% of retailer click-outs buying, a $20–$22 basket, a 5% average commission, and 4% of active players paying (consumer-app freemium norms run roughly 2–5%). If any is off by half, sponsored and affiliate revenue move by half; the subscription lines don't depend on them.*
 
 **Scenario A: one metro, year one**
 - 3,000 active players and 1,500 recommendations a month.
@@ -118,11 +119,12 @@ We win **stringers first, for free**, because their bookings and job records cre
 
 | Line | Monthly |
 |---|---|
-| Shop Pro: 8 × $19 | $152 |
-| Partner (design-partner rate): $745 + 40 sample installs × $18 × 20% margin | $889 |
+| Shop Pro: 8 × $29 | $232 |
+| Partner (design-partner rate): $995 + 40 sample installs × $18 × 20% margin | $1,139 |
 | Sponsored: 1,275 free-plan views × 35% fit fill × 8% CTR × $1.40 | ≈ $50 |
 | Affiliate: 150 click-outs × 15% conversion × $20 × 5% | ≈ $23 |
-| **Total** | **≈ $1,100/mo** |
+| **B2B total** | **≈ $1,440/mo** |
+| Player subscriptions: 3,000 × 4% paid × ~$55/yr blended | ≈ $550 |
 
 This is a learning-stage metro. It proves bookings, samples and integrity; it doesn't pay salaries.
 
@@ -134,17 +136,19 @@ This is a learning-stage metro. It proves bookings, samples and integrity; it do
 
 | Line | Monthly |
 |---|---|
-| Shop Pro 220 × $19 + Club 15 × $79 | $5,365 |
-| Insights (2 string + 2 racket) × $490 | $1,960 |
-| Partner 4 × $1,490 | $5,960 |
+| Shop Pro 220 × $29 + Shop Club 15 × $99 | $7,865 |
+| Insights (2 string + 2 racket) × $690 | $2,760 |
+| Partner 4 × $1,990 | $7,960 |
 | Sample margin: about 133 installs/mo × $18 × 20% | $480 |
 | Sponsored: 25,500 free views × 35% fill × 8% CTR × $1.50 | ≈ $1,070 |
 | Affiliate: 3,000 click-outs × 15% × $22 × 5% | ≈ $500 |
-| **B2B total** | **≈ $15,300/mo (≈ $185k ARR)**, on top of player subscriptions |
+| **B2B total** | **≈ $20,600/mo (≈ $248k ARR)** |
+| Player subscriptions: 60,000 × 4% paid × ~$55/yr blended | ≈ $11,000/mo (≈ $132k ARR) |
+| **Total** | **≈ $31,600/mo (≈ $380k ARR)** |
 
 **What the scenarios show:**
 - **Brand subscriptions are about half of B2B revenue; sponsored and affiliate together are under 10%.** That is deliberate: the business doesn't depend on the slot that could compromise trust.
-- **Costs to serve are low.** Hosting and email are cents per shop, and Stripe takes about 3%. The real cost is sales: about $150 of field time per signed stringer (payback about 8 months on Pro) and founder-led brand sales on 2–3 month cycles.
+- **Costs to serve are low.** Hosting and email are cents per shop, and Stripe takes about 3%. The real cost is sales: about $150 of field time per signed stringer (payback about 5 months on Pro) and founder-led brand sales on 2–3 month cycles.
 - **Upside not counted:** in-app payment for bookings (a 1–2% take on $40–$70 jobs), a Club tier for chains, demo-racket programmes, and international metros through ERSA-member stringers.
 
 ---

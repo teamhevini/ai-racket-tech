@@ -42,12 +42,22 @@ export function entitlementsFor(tier: UserTier, isAdmin = false): Entitlements {
   };
 }
 
+export type BillingInterval = "month" | "year";
+
+/**
+ * Player plans. Priced against sports-app benchmarks (Strava $11.99/mo · $79.99/yr,
+ * SwingVision ~$14.99/mo · ~$149.99/yr, Arccos $199.99/yr): 10IS sits below
+ * video-AI tools and alongside training apps. Annual is the default and saves ~40%.
+ * Early $4.99 one-time Pro buyers keep Pro for good (no subscription id, never expires).
+ */
 export const PLANS = {
   pro: {
     name: "Pro",
-    price: "$4.99",
-    cadence: "one-time",
-    amountCents: 499,
+    price: "$6.99",
+    cadence: "per month",
+    amountCents: 699,
+    annualPrice: "$49",
+    annualCents: 4900,
     features: [
       "Unlimited rackets in your bag",
       "Full restring history for every racket",
@@ -59,12 +69,22 @@ export const PLANS = {
   },
   club: {
     name: "Club",
-    price: "$1.99",
+    price: "$12.99",
     cadence: "per month",
-    amountCents: 199,
+    amountCents: 1299,
+    annualPrice: "$99",
+    annualCents: 9900,
     features: ["Everything in Pro", "Live AI racket technician chat", "No sponsored placements", "Priority support"],
   },
 } as const;
+
+/** Founder lifetime Pro: about 3x the annual price, one payment. */
+export const LIFETIME = { name: "Pro Lifetime", price: "$149", amountCents: 14900 } as const;
+
+export function planPrice(plan: "pro" | "club", interval: BillingInterval) {
+  const p = PLANS[plan];
+  return interval === "year" ? { label: p.annualPrice, cents: p.annualCents, cadence: "per year" } : { label: p.price, cents: p.amountCents, cadence: "per month" };
+}
 
 // ─── 10IS for Business ──────────────────────────────────────────────────────
 
@@ -90,9 +110,9 @@ export const SHOP_PLANS = {
   },
   pro: {
     name: "Shop Pro",
-    price: "$19",
+    price: "$29",
     cadence: "per month",
-    amountCents: 1900,
+    amountCents: 2900,
     features: [
       "Unlimited app bookings",
       "Full racket history from every stringer (with the player's consent)",
@@ -101,6 +121,14 @@ export const SHOP_PLANS = {
       "Shop insights: regulars, revenue, top strings",
     ],
   },
+} as const;
+
+/** Clubs and multi-stringer shops: sold directly for now (benchmark: RacquetPass $99–$149/mo). */
+export const SHOP_CLUB = {
+  name: "Shop Club",
+  price: "$99",
+  cadence: "per month",
+  features: ["Everything in Shop Pro", "Up to 5 stringers on one queue", "Multi-location reporting", "Priority onboarding"],
 } as const;
 
 export const BRAND_PLANS = {
@@ -113,9 +141,9 @@ export const BRAND_PLANS = {
   },
   insights: {
     name: "Insights",
-    price: "$490",
+    price: "$690",
     cadence: "per month",
-    amountCents: 49000,
+    amountCents: 69000,
     features: [
       "Everything in Listing",
       "Demand: how often the AI recommends you vs. the category",
@@ -126,11 +154,11 @@ export const BRAND_PLANS = {
   },
   partner: {
     name: "Partner",
-    price: "$1,490",
+    price: "$1,990",
     cadence: "per month",
-    amountCents: 149000,
+    amountCents: 199000,
     features: ["Everything in Insights", "Sample programmes through partner stringers", "Sample-to-rebuy tracking", "Quarterly category report"],
   },
 } as const;
 
-export const SPONSORED_MIN_CPC_CENTS = 80;
+export const SPONSORED_MIN_CPC_CENTS = 100;

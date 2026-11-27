@@ -52,12 +52,16 @@ export default function Terms() {
             reminders, saved stringers, and a preview of stringer search and the racket catalog. No payment required.
           </li>
           <li>
-            <strong>Pro ($4.99 one-time)</strong> — Unlimited rackets, full restring history for every racket, every stringer search
-            result, the full racket catalog and shareable setup links. Charged once via Stripe.
+            <strong>Pro ($6.99/month or $49/year)</strong> — Unlimited rackets, full restring history for every racket, every stringer search
+            result, the full racket catalog, shareable setup links and no sponsored placements. Billed via Stripe; cancel anytime and keep
+            access to the end of the period. Pro bought earlier as a one-time purchase stays active for good.
           </li>
           <li>
-            <strong>Club ($1.99/month)</strong> — Everything in Pro plus the AI racket technician chat. Billed monthly via Stripe. Cancel
+            <strong>Club ($12.99/month or $99/year)</strong> — Everything in Pro plus the AI racket technician chat. Billed via Stripe. Cancel
             anytime from your Account page or by contacting us.
+          </li>
+          <li>
+            <strong>Pro Lifetime ($149 once)</strong> — Everything in Pro with no renewal, while founder pricing lasts.
           </li>
         </ul>
         <p>Prices are in USD and may be subject to applicable taxes.</p>

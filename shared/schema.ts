@@ -693,7 +693,7 @@ export const campaignInputSchema = z.object({
   stringId: z.number().int().positive(),
   name: z.string().trim().min(1).max(80),
   headline: z.string().trim().min(4, "Write a short headline").max(90),
-  cpcCents: cents(80, 2000), // $0.80 minimum per click
+  cpcCents: cents(100, 2000), // $1.00 minimum per click
   monthlyBudgetCents: cents(5000, 5_000_000), // $50 minimum
   levels: z.array(z.enum(["beginner", "intermediate", "advanced", "pro"])).max(4).optional(),
   status: z.enum(["draft", "active", "paused", "ended"]).optional(),

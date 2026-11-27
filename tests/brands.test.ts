@@ -52,7 +52,7 @@ describe("brand accounts", () => {
     expect((await b.agent.post("/api/brand/campaigns").send({ stringId: lux.id, name: "x", headline: "Steal", cpcCents: 100, monthlyBudgetCents: 10000 })).status).toBe(400);
     const s = (await b.agent.post("/api/brand/strings").send({ model: "Own", family: "multifilament" })).body;
     expect((await b.agent.post("/api/brand/campaigns").send({ stringId: s.id, name: "x", headline: "Cheap", cpcCents: 10, monthlyBudgetCents: 10000 })).status).toBe(400);
-    const c = await b.agent.post("/api/brand/campaigns").send({ stringId: s.id, name: "x", headline: "Fair bid", cpcCents: 90, monthlyBudgetCents: 10000, levels: ["beginner"] });
+    const c = await b.agent.post("/api/brand/campaigns").send({ stringId: s.id, name: "x", headline: "Fair bid", cpcCents: 100, monthlyBudgetCents: 10000, levels: ["beginner"] });
     expect(c.status).toBe(201);
     const paused = await b.agent.patch(`/api/brand/campaigns/${c.body.id}`).send({ status: "paused" });
     expect(paused.body.status).toBe("paused");
@@ -312,7 +312,7 @@ describe("brand plan billing", () => {
       },
     } as any);
     expect((await b.agent.post("/api/brand/checkout/insights")).body.url).toContain("stripe.test");
-    expect(created[0].line_items[0].price_data.unit_amount).toBe(49000);
+    expect(created[0].line_items[0].price_data.unit_amount).toBe(69000);
     const v = await b.agent.post("/api/brand/checkout/verify").send({ session_id: "cs_b" });
     expect(v.body.brand.plan).toBe("insights");
     expect((await b.agent.get("/api/brand/insights")).status).toBe(200);

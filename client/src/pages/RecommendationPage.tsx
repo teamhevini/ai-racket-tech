@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 
 type Setup = RecommendationOutput["setup"]["mains"];
 
+const HoloRacket = React.lazy(() => import("@/components/holo/HoloRacket"));
+
 const CONFIDENCE: Record<string, { label: string; tone: "grass" | "clay" | "neutral"; body: string }> = {
   high: { label: "High confidence", tone: "grass", body: "Built from your exact frame specs and full player profile." },
   medium: { label: "Good confidence", tone: "clay", body: "Tuned to your frame and game. Tell us your current strings next time for an even sharper result." },
@@ -142,6 +144,24 @@ export default function RecommendationPage() {
           </p>
         </div>
       )}
+
+      {/* Your frame, in 3D, with the setup pinned to it */}
+      <React.Suspense fallback={<div className="mb-4 h-[22rem]" />}>
+        <HoloRacket
+          compact
+          className="mb-4 h-[22rem] sm:h-[26rem]"
+          specs={{
+            headSize: data.racket?.headSize ?? null,
+            pattern: data.racket?.stringPattern ?? null,
+            stiffness: data.racket?.stiffnessRa ?? null,
+            weight: data.racket?.weightUnstrung ?? null,
+            balance: data.racket?.balance ?? null,
+            beam: data.racket?.beamWidth ?? null,
+            tension: { mains: numericTension(mains.tension), crosses: crosses ? numericTension(crosses.tension) : null },
+            stringName: mains.exampleStrings[0] ?? mains.stringFamily,
+          }}
+        />
+      </React.Suspense>
 
       {/* Primary setup */}
       <Card className="relative mb-4 overflow-hidden rounded-3xl p-0">

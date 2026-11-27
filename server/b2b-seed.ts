@@ -160,7 +160,7 @@ export async function seedDemo(): Promise<void> {
     .insert(campaigns)
     .values({ brandId: northline.id, stringId: ridgeSoft.id, name: "Ridge Soft launch", headline: "Spin without the sting — try Ridge Soft", status: "active", cpcCents: 120, monthlyBudgetCents: 60000, levels: [] })
     .returning();
-  await db.insert(campaigns).values({ brandId: northline.id, stringId: cloud.id, name: "Cloud Multi comfort", headline: "Plush feel that lasts longer than most multis", status: "active", cpcCents: 90, monthlyBudgetCents: 30000, levels: [] });
+  await db.insert(campaigns).values({ brandId: northline.id, stringId: cloud.id, name: "Cloud Multi comfort", headline: "Plush feel that lasts longer than most multis", status: "active", cpcCents: 100, monthlyBudgetCents: 30000, levels: [] });
   const [program] = await db
     .insert(samplePrograms)
     .values({ brandId: northline.id, stringId: ridgeSoft.id, title: "Free Ridge Soft restring", pitch: "Northline covers the string and the labour. Rate it after three hits.", unitsTotal: 200, installFeeCents: 1800 })

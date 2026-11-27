@@ -95,7 +95,19 @@ export interface RecommendationRunResponse {
   confidence: "high" | "medium" | "estimated";
   createdAt?: string;
   fallback?: boolean;
-  racket?: { id: number; brand: string; model: string; recTensionMin: number | null; recTensionMax: number | null } | null;
+  racket?: {
+    id: number;
+    brand: string;
+    model: string;
+    recTensionMin: number | null;
+    recTensionMax: number | null;
+    headSize?: number | null;
+    stringPattern?: string | null;
+    stiffnessRa?: number | null;
+    weightUnstrung?: number | null;
+    balance?: string | null;
+    beamWidth?: string | null;
+  } | null;
   racketLabel?: string | null;
   inputs?: Record<string, unknown>;
   isOwner?: boolean;

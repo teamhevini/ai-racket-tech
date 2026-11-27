@@ -86,7 +86,21 @@ recommendRouter.get(
       recommendation: run.outputJson,
       confidence: run.confidence,
       createdAt: run.createdAt,
-      racket: racket ? { id: racket.id, brand: racket.brand, model: racket.model, recTensionMin: racket.recTensionMin, recTensionMax: racket.recTensionMax } : null,
+      racket: racket
+        ? {
+            id: racket.id,
+            brand: racket.brand,
+            model: racket.model,
+            recTensionMin: racket.recTensionMin,
+            recTensionMax: racket.recTensionMax,
+            headSize: racket.headSize,
+            stringPattern: racket.stringPattern,
+            stiffnessRa: racket.stiffnessRa,
+            weightUnstrung: racket.weightUnstrung,
+            balance: racket.balance,
+            beamWidth: racket.beamWidth,
+          }
+        : null,
       racketLabel: run.racketLabel ?? (racket ? `${racket.brand} ${racket.model}` : null),
       inputs: run.inputsJson,
       isOwner: !!user && run.userId === user.id,

@@ -9,6 +9,8 @@ import { Mark } from "@/components/Logo";
 import type { ReminderJson } from "@/lib/types";
 import { PLANS } from "@shared/tiers";
 
+const HoloRacket = React.lazy(() => import("@/components/holo/HoloRacket"));
+
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
   whileInView: { opacity: 1, y: 0 },
@@ -275,7 +277,12 @@ export default function Landing() {
             animate={{ opacity: 1, y: 0, rotate: 0 }}
             transition={{ duration: 0.9, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           >
-            <HeroPhone />
+            <React.Suspense fallback={<div className="h-[30rem] sm:h-[36rem]" />}>
+              <HoloRacket
+                className="h-[30rem] sm:h-[36rem]"
+                specs={{ headSize: 98, pattern: "16x19", beam: "21.5 mm", balance: "32 cm", weight: 305, tension: { mains: 52, crosses: 50 }, stringName: "ALU Power 125" }}
+              />
+            </React.Suspense>
           </motion.div>
         </div>
       </section>
@@ -332,10 +339,10 @@ export default function Landing() {
                 <Mark className="size-10" />
                 <span className="text-sm text-bg/70">Built by Hevini Sporting</span>
               </div>
-              <h2 className="display mt-6 text-4xl leading-tight sm:text-5xl">Free to start. Pro for less than a set of strings.</h2>
+              <h2 className="display mt-6 text-4xl leading-tight sm:text-5xl">Free to start. Pro for less than a can of balls a month.</h2>
               <p className="mt-4 max-w-md text-bg/70">
-                Setups, reminders and saved stringers are free. Pro unlocks unlimited rackets and full history, once, for{" "}
-                {PLANS.pro.price}. Club adds the live AI technician for {PLANS.club.price}/month.
+                Setups, reminders and saved stringers are free. Pro unlocks unlimited rackets and full history for{" "}
+                {PLANS.pro.annualPrice} a year. Club adds the live AI technician for {PLANS.club.annualPrice} a year.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="lg" variant="ball">
