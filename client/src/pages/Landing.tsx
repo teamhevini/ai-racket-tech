@@ -280,7 +280,7 @@ export default function Landing() {
             <React.Suspense fallback={<div className="h-[30rem] sm:h-[36rem]" />}>
               <HoloRacket
                 className="h-[30rem] sm:h-[36rem]"
-                specs={{ headSize: 98, pattern: "16x19", beam: "21.5 mm", balance: "32 cm", weight: 305, tension: { mains: 52, crosses: 50 }, stringName: "ALU Power 125" }}
+                specs={{ headSize: 97, pattern: "16x19", beam: "21.5 mm", balance: "32.5 cm · 6 pts HL", weight: 300, tension: { mains: 52, crosses: 50 }, stringName: "ALU Power 125" }}
               />
             </React.Suspense>
           </motion.div>
