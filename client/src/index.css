@@ -64,6 +64,19 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Grid items may shrink below their longest line, so a long name truncates or wraps
+     inside its card instead of pushing the whole page sideways on a small phone. */
+  .grid > * {
+    min-width: 0;
+  }
+
+  /* Phones only ever scroll up and down. "clip" (unlike "hidden") keeps sticky headers working. */
+  html,
+  body {
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+  }
+
   body {
     @apply bg-bg font-sans text-ink antialiased;
     font-feature-settings: "ss01", "cv11";

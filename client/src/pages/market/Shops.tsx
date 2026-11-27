@@ -83,9 +83,9 @@ export default function Shops() {
           body="Try a nearby city, or search every stringer near you below."
         />
       ) : (
-        <ul className="grid gap-3 md:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {shops.data!.map((s, i) => (
-            <li key={s.id} className="animate-fade-up" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+            <li key={s.id} className="min-w-0 animate-fade-up" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
               <ShopCard shop={s} href={`/shops/${s.slug}${carry}`} />
             </li>
           ))}

@@ -1,3 +1,4 @@
+import { InstallApp } from "@/components/InstallApp";
 import * as React from "react";
 import { lazy, Suspense } from "react";
 import { Link } from "wouter";
@@ -54,6 +55,8 @@ function Dashboard() {
           {me.firstName ? `${me.firstName}'s` : "Your"} <em className="text-brand">bag</em>
         </h1>
       </header>
+
+      <InstallApp dismissible className="mb-6" />
 
       {bag.isLoading ? (
         <div className="space-y-3">

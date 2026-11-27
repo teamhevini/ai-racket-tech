@@ -1,3 +1,4 @@
+import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, Check, Lock, ShieldCheck, Sparkles } from "lucide-react";
 import { BRAND_PLANS } from "@shared/tiers";
@@ -278,8 +279,27 @@ function Segment({ rows }: { rows: Array<{ name: string; share?: number | null; 
 
 export function SampleTable({ rows }: { rows: StringInsights["samples"] }) {
   return (
-    <div className="-mx-5 overflow-x-auto px-5 sm:-mx-6 sm:px-6">
-      <table className="w-full min-w-[560px] text-sm">
+    <>
+    {/* Phones: one card per programme, so nothing scrolls sideways. */}
+    <ul className="space-y-3 sm:hidden">
+      {rows.map((s) => (
+        <li key={s.id} className="rounded-2xl bg-surface-2/60 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <p className="min-w-0 font-medium">{s.title}</p>
+            <StatusPill status={s.status} />
+          </div>
+          <dl className="mt-3 grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
+            <MobileStat label="Claimed" value={<>{int(s.claimed)}<span className="text-faint">/{int(s.unitsTotal)}</span></>} />
+            <MobileStat label="Installed" value={int(s.installed)} />
+            <MobileStat label="Rating" value={<Kv value={s.avgRating} format={(n) => n.toFixed(1)} />} />
+            <MobileStat label="Rebuy" value={<Kv value={s.rebuyRate} format={(n) => pct(n)} />} />
+            <MobileStat label="Spend" value={dollars(s.spendCents)} />
+          </dl>
+        </li>
+      ))}
+    </ul>
+    <div className="hidden sm:block">
+      <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-line text-left text-xs text-muted">
             <th className="pb-2 font-medium">Programme</th>
@@ -315,6 +335,16 @@ export function SampleTable({ rows }: { rows: StringInsights["samples"] }) {
           ))}
         </tbody>
       </table>
+    </div>
+    </>
+  );
+}
+
+function MobileStat({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-2xs text-muted">{label}</dt>
+      <dd className="truncate font-mono font-semibold tabular">{value}</dd>
     </div>
   );
 }
@@ -383,8 +413,26 @@ function RetailerDashboard({ data }: { data: RetailerInsights }) {
         {data.offers.length === 0 ? (
           <p className="text-sm text-muted">Add offers to start receiving clicks.</p>
         ) : (
-          <div className="-mx-5 overflow-x-auto px-5 sm:-mx-6 sm:px-6">
-            <table className="w-full min-w-[520px] text-sm">
+          <>
+          <ul className="space-y-3 sm:hidden">
+            {[...data.offers]
+              .sort((a, b) => b.clicks - a.clicks)
+              .map((o) => (
+                <li key={o.stringId} className="rounded-2xl bg-surface-2/60 p-4">
+                  <p className="font-medium">
+                    <span className="text-muted">{o.brandName}</span> {o.model}
+                  </p>
+                  <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                    <MobileStat label="Clicks" value={int(o.clicks)} />
+                    <MobileStat label="Orders" value={int(o.orders)} />
+                    <MobileStat label="Revenue" value={dollars(o.revenueCents)} />
+                    <MobileStat label="Commission" value={dollars(o.commissionCents)} />
+                  </dl>
+                </li>
+              ))}
+          </ul>
+          <div className="hidden sm:block">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs text-muted">
                   <th className="pb-2 font-medium">String</th>
@@ -411,6 +459,7 @@ function RetailerDashboard({ data }: { data: RetailerInsights }) {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Panel>
       <Note>Clicks are counted when a player taps through to your product page. Orders appear once your store reports the conversion.</Note>

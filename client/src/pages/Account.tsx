@@ -1,3 +1,4 @@
+import { InstallApp } from "@/components/InstallApp";
 import * as React from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -457,7 +458,9 @@ export default function Account() {
         </div>
       </header>
 
-      {/* Scrollable tabs — v1 used a fixed sidebar that left phones a sliver of content. */}
+      <InstallApp className="mb-6" />
+
+      {/* Section tabs wrap onto a second line on phones; nothing scrolls sideways. */}
       <div role="tablist" aria-label="Account sections" className="mb-6 flex flex-wrap gap-2 pb-1">
         {TABS.map((t) => (
           <button

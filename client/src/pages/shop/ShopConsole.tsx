@@ -1,3 +1,4 @@
+import { InstallApp } from "@/components/InstallApp";
 import { useQuery } from "@tanstack/react-query";
 import { Link, Redirect, useParams } from "wouter";
 import { Store } from "lucide-react";
@@ -91,6 +92,8 @@ export default function ShopConsole() {
         </div>
         <h1 className="display mt-2 text-[2.5rem] leading-[1.02] sm:text-5xl">{tab.title}</h1>
       </header>
+
+      {tab.key === "queue" && <InstallApp dismissible className="mb-5" />}
 
       <nav aria-label="Shop sections" className="mb-6">
         <ul className="flex flex-wrap gap-2">
